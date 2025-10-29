@@ -317,6 +317,8 @@
              */
             async function initializeFirebase() {
                 try {
+                    console.log("Starting Firebase initialization...");
+                    
                     // --- IMPORTANT ---
                     // These placeholders will be replaced by the GitHub Action
                     const firebaseConfig = {
@@ -328,41 +330,87 @@
                         appId: "YOUR_APP_ID_HERE"
                     };
 
-                    // Check if placeholders are still present
-                    if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
-                        console.error("Firebase config is not set. Placeholders are still present.");
-                        displayError("Config Missing", "Firebase configuration is not available. Deployment may have failed.");
+                    console.log("Firebase config loaded. Validating...");
+
+                    // Check if placeholders are still present or if values are invalid
+                    const isInvalidConfig = (
+                        firebaseConfig.apiKey === "YOUR_API_KEY_HERE" ||
+                        firebaseConfig.apiKey === "***" ||
+                        !firebaseConfig.apiKey ||
+                        firebaseConfig.apiKey.length < 10 ||
+                        firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE" ||
+                        firebaseConfig.authDomain === "***" ||
+                        !firebaseConfig.authDomain ||
+                        firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE" ||
+                        firebaseConfig.projectId === "***" ||
+                        !firebaseConfig.projectId
+                    );
+
+                    if (isInvalidConfig) {
+                        console.error("Firebase config is not set properly. Config values:", {
+                            apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING',
+                            authDomain: firebaseConfig.authDomain || 'MISSING',
+                            projectId: firebaseConfig.projectId || 'MISSING',
+                            storageBucket: firebaseConfig.storageBucket || 'MISSING',
+                            messagingSenderId: firebaseConfig.messagingSenderId || 'MISSING',
+                            appId: firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : 'MISSING'
+                        });
+                        
+                        let errorDetails = "Firebase configuration issues detected:\n";
+                        if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") errorDetails += "• API Key placeholder not replaced\n";
+                        if (firebaseConfig.apiKey === "***") errorDetails += "• API Key is masked/hidden\n";
+                        if (!firebaseConfig.apiKey) errorDetails += "• API Key is empty\n";
+                        if (firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE") errorDetails += "• Auth Domain placeholder not replaced\n";
+                        if (firebaseConfig.authDomain === "***") errorDetails += "• Auth Domain is masked/hidden\n";
+                        if (!firebaseConfig.authDomain) errorDetails += "• Auth Domain is empty\n";
+                        if (firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") errorDetails += "• Project ID placeholder not replaced\n";
+                        if (firebaseConfig.projectId === "***") errorDetails += "• Project ID is masked/hidden\n";
+                        if (!firebaseConfig.projectId) errorDetails += "• Project ID is empty\n";
+                        
+                        displayError("Config Error", errorDetails);
                         return;
                     }
 
+                    console.log("Firebase config validation passed. Initializing app...");
                     const app = initializeApp(firebaseConfig);
+                    console.log("Firebase app initialized successfully");
+                    
                     db = getFirestore(app);
                     auth = getAuth(app);
+                    console.log("Firebase services initialized");
 
                     // Sign in anonymously for GitHub deployment
+                    console.log("Starting anonymous authentication...");
                     await new Promise((resolve, reject) => {
                         onAuthStateChanged(auth, async (user) => {
                             if (user) {
+                                console.log("User already authenticated:", user.uid);
                                 resolve(user);
                             } else {
                                 // No user, sign in
+                                console.log("No user found, signing in anonymously...");
                                 try {
                                     await signInAnonymously(auth);
+                                    console.log("Anonymous sign-in successful");
                                     resolve(auth.currentUser);
                                 } catch (authError) {
+                                    console.error("Anonymous sign-in failed:", authError);
                                     reject(authError);
                                 }
                             }
                         });
                     });
 
+                    console.log("Authentication complete. Starting listeners...");
                     // Start listeners and update view
                     listenForTitle();
                     updateView();
+                    console.log("Firebase initialization complete!");
 
                 } catch (error) {
                     console.error("Error initializing Firebase:", error);
-                    displayError(error.name, error.message);
+                    const errorMessage = `Firebase initialization failed:\n\nError: ${error.name}\nMessage: ${error.message}\nStack: ${error.stack}`;
+                    displayError("Firebase Error", errorMessage);
                 }
             }
             
@@ -372,11 +420,37 @@
             function displayError(title, message) {
                 adminPanelTitle.textContent = "Error";
                 overallRatingDisplay.textContent = title;
-                overallRatingDisplay.classList.add('text-red-600', 'text-5xl');
-                ratingCount.textContent = message;
+                overallRatingDisplay.classList.add('text-red-600', 'text-3xl');
+                overallRatingDisplay.classList.remove('text-7xl', 'text-blue-600');
                 
-                formTitle.textContent = "Error";
-                feedbackFormContainer.innerHTML = `<p class="text-center text-red-600">${title}: ${message}</p>`;
+                // Create detailed error message with better formatting
+                const errorHtml = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold text-red-800 mb-2">${title}</h3>
+                        <div class="text-sm text-red-700 whitespace-pre-line">${message}</div>
+                        <div class="mt-4 text-xs text-red-600">
+                            <strong>Debug Info:</strong><br>
+                            • Timestamp: ${new Date().toISOString()}<br>
+                            • User Agent: ${navigator.userAgent.substring(0, 50)}...<br>
+                            • Location: ${window.location.href}
+                        </div>
+                    </div>
+                `;
+                
+                ratingCount.innerHTML = errorHtml;
+                
+                formTitle.textContent = "Configuration Error";
+                feedbackFormContainer.innerHTML = `
+                    <div class="text-center">
+                        <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                            <h3 class="text-lg font-semibold text-red-800 mb-2">${title}</h3>
+                            <div class="text-sm text-red-700 whitespace-pre-line mb-4">${message}</div>
+                            <div class="text-xs text-red-600">
+                                Please contact the administrator to resolve this issue.
+                            </div>
+                        </div>
+                    </div>
+                `;
                 
                 // Disable all buttons
                 const buttons = document.querySelectorAll('button');

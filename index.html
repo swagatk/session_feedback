@@ -359,6 +359,26 @@
 
                     // Debug each validation condition using cleaned values
                     console.log("Validation checks:");
+                    
+                    // Explicit comparison debugging
+                    console.log("=== DETAILED COMPARISON DEBUG ===");
+                    console.log("apiKey comparison:");
+                    console.log("  cleanConfig.apiKey:", JSON.stringify(cleanConfig.apiKey));
+                    console.log("  placeholder:", JSON.stringify("YOUR_API_KEY_HERE"));
+                    console.log("  equal?:", cleanConfig.apiKey === "YOUR_API_KEY_HERE");
+                    console.log("  equal (loose)?:", cleanConfig.apiKey == "YOUR_API_KEY_HERE");
+                    
+                    console.log("authDomain comparison:");
+                    console.log("  cleanConfig.authDomain:", JSON.stringify(cleanConfig.authDomain));
+                    console.log("  placeholder:", JSON.stringify("YOUR_AUTH_DOMAIN_HERE"));
+                    console.log("  equal?:", cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
+                    
+                    console.log("projectId comparison:");
+                    console.log("  cleanConfig.projectId:", JSON.stringify(cleanConfig.projectId));
+                    console.log("  placeholder:", JSON.stringify("YOUR_PROJECT_ID_HERE"));
+                    console.log("  equal?:", cleanConfig.projectId === "YOUR_PROJECT_ID_HERE");
+                    console.log("=== END DETAILED DEBUG ===");
+                    
                     console.log("- apiKey === placeholder:", cleanConfig.apiKey === "YOUR_API_KEY_HERE");
                     console.log("- authDomain === placeholder:", cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
                     console.log("- projectId === placeholder:", cleanConfig.projectId === "YOUR_PROJECT_ID_HERE");
@@ -370,18 +390,31 @@
                     console.log("- projectId too short:", cleanConfig.projectId && cleanConfig.projectId.length < 3);
 
                     // Check if placeholders are still present or if values are invalid using cleaned values
-                    const isInvalidConfig = (
-                        cleanConfig.apiKey === "YOUR_API_KEY_HERE" ||
-                        cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE" ||
-                        cleanConfig.projectId === "YOUR_PROJECT_ID_HERE" ||
+                    // TEMPORARY: Simplified validation to bypass the mysterious comparison issue
+                    const hasPlaceholders = (
+                        cleanConfig.apiKey.includes("YOUR_API_KEY_HERE") ||
+                        cleanConfig.authDomain.includes("YOUR_AUTH_DOMAIN_HERE") ||
+                        cleanConfig.projectId.includes("YOUR_PROJECT_ID_HERE")
+                    );
+                    
+                    const hasEmptyValues = (
                         !cleanConfig.apiKey ||
                         !cleanConfig.authDomain ||
-                        !cleanConfig.projectId ||
+                        !cleanConfig.projectId
+                    );
+                    
+                    const hasInvalidValues = (
                         cleanConfig.apiKey.length < 10 ||
                         !cleanConfig.authDomain.includes('.') ||
                         cleanConfig.projectId.length < 3
                     );
-
+                    
+                    const isInvalidConfig = hasPlaceholders || hasEmptyValues || hasInvalidValues;
+                    
+                    console.log("Simplified validation:");
+                    console.log("- hasPlaceholders:", hasPlaceholders);
+                    console.log("- hasEmptyValues:", hasEmptyValues);
+                    console.log("- hasInvalidValues:", hasInvalidValues);
                     console.log("Overall validation result - isInvalidConfig:", isInvalidConfig);
 
                     if (isInvalidConfig) {
@@ -389,8 +422,8 @@
                         
                         let errorDetails = "Firebase configuration issues detected:\n";
                         
-                        // Check each condition individually and report exactly what's wrong using cleaned values
-                        if (cleanConfig.apiKey === "YOUR_API_KEY_HERE") {
+                        // Check each condition individually using the new validation approach
+                        if (cleanConfig.apiKey.includes("YOUR_API_KEY_HERE")) {
                             errorDetails += "• API Key placeholder not replaced\n";
                         } else if (!cleanConfig.apiKey) {
                             errorDetails += "• API Key is empty\n";
@@ -398,7 +431,7 @@
                             errorDetails += `• API Key appears invalid (length: ${cleanConfig.apiKey.length})\n`;
                         }
                         
-                        if (cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE") {
+                        if (cleanConfig.authDomain.includes("YOUR_AUTH_DOMAIN_HERE")) {
                             errorDetails += "• Auth Domain placeholder not replaced\n";
                         } else if (!cleanConfig.authDomain) {
                             errorDetails += "• Auth Domain is empty\n";
@@ -406,7 +439,7 @@
                             errorDetails += `• Auth Domain appears invalid (no dot): ${cleanConfig.authDomain}\n`;
                         }
                         
-                        if (cleanConfig.projectId === "YOUR_PROJECT_ID_HERE") {
+                        if (cleanConfig.projectId.includes("YOUR_PROJECT_ID_HERE")) {
                             errorDetails += "• Project ID placeholder not replaced\n";
                         } else if (!cleanConfig.projectId) {
                             errorDetails += "• Project ID is empty\n";

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture Feedback</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF and html2canvas for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        .star-rating {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+        }
+        .star-rating input[type="radio"] {
+            display: none;
+        }
+        .star-rating label {
+            font-size: 2.5rem;
+            color: #d1d5db; /* gray-300 */
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .star-rating input[type="radio"]:hover ~ label,
+        .star-rating input[type="radio"]:checked ~ label {
+            color: #f59e0b; /* amber-500 */
+        }
+        /* Custom styles for PDF export */
+        @media print {
+            body, html {
+                height: auto;
+            }
+            #admin-panel {
+                box-shadow: none;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        /* Hide scrollbar for PDF */
+        .pdf-export {
+            overflow: visible !important;
+        }
+        #admin-panel {
+            background: #fff;
+        }
+    </style>
+</head>
+<body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+
+    <!-- Admin Button -->
+    <button id="admin-button" class="no-print fixed top-6 right-6 bg-gray-700 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-800 transition duration-200 z-50">
+        Admin
+    </button>
+
+    <div class="max-w-2xl w-full space-y-8">
+
+        <!-- Overall Rating Display (Admin Panel) -->
+        <div id="admin-panel" class="hidden bg-white p-8 shadow-2xl rounded-2xl">
+            
+            <!-- Wrapper for PDF content -->
+            <div id="pdf-content-wrapper">
+                <h2 id="admin-panel-title" class="text-center text-3xl font-extrabold text-gray-900">
+                    Overall Lecture Rating
+                </h2>
+                <!-- This div was missing, causing an error -->
+                <div id="overall-rating-display" class="text-center text-7xl font-bold text-blue-600 my-4">
+                    -- / 5.0
+                </div>
+                <div id="rating-count" class="text-center text-lg text-gray-500">
+                    (No submissions yet)
+                </div>
+
+                <!-- Feedback Table -->
+                <div class="mt-8 flow-root">
+                    <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                        <div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+                            <table class="min-w-full divide-y divide-gray-300">
+                                <thead>
+                                    <tr>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Clarity</th>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Engage</th>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Pace</th>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Positive</th>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Improve</th>
+                                        <th scope="col" class="py-3.5 px-4 text-left text-sm font-semibold text-gray-900">Submitted</th>
+                                    </tr>
+                                </thead>
+                                <!-- This tbody was missing, causing an error -->
+                                <tbody id="feedback-table-body" class="divide-y divide-gray-200 bg-white">
+                                    <!-- Rows will be injected here by Firestore listener -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- End of Wrapper for PDF content -->
+
+            <!-- Admin Settings (Not in PDF) -->
+            <div id="admin-settings" class="no-print mt-12 pt-8 border-t border-gray-200">
+                <h3 class="text-2xl font-bold text-gray-800 mb-6">Admin Settings</h3>
+                <div class="space-y-6">
+                    <!-- Set Module Code -->
+                    <div>
+                        <label for="module-code-input" class="block text-sm font-medium text-gray-700">Module Code</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="text" id="module-code-input" class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., CS101">
+                            <button id="save-title-button" class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                Save
+                            </button>
+                        </div>
+                        <p id="title-saved-message" class="mt-2 text-sm text-green-600 hidden">Module code saved!</p>
+                    </div>
+                    
+                    <!-- Admin Buttons -->
+                    <button id="download-pdf-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 no-print">
+                        Download Report as PDF
+                    </button>
+                    <button id="reset-feedback-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition duration-150 no-print">
+                        Reset All Feedback
+                    </button>
+                    <button id="logout-button" class="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 no-print">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback Form -->
+        <div id="feedback-form-container" class="bg-white p-8 shadow-2xl rounded-2xl">
+            <h2 id="form-title" class="text-center text-3xl font-extrabold text-gray-900">
+                Submit your feedback
+            </h2>
+            <form id="feedback-form" class="mt-8 space-y-6">
+                <!-- Star Ratings -->
+                <div class="rounded-md shadow-sm space-y-4 p-6 border border-gray-200">
+                    <!-- Clarity -->
+                    <div>
+                        <label class="block text-lg font-medium text-gray-800">Clarity of Content</label>
+                        <div class="star-rating">
+                            <input type="radio" id="c5" name="clarity" value="5" required><label for="c5">&#9733;</label>
+                            <input type="radio" id="c4" name="clarity" value="4"><label for="c4">&#9733;</label>
+                            <input type="radio" id="c3" name="clarity" value="3"><label for="c3">&#9733;</label>
+                            <input type="radio" id="c2" name="clarity" value="2"><label for="c2">&#9733;</label>
+                            <input type="radio" id="c1" name="clarity" value="1"><label for="c1">&#9733;</label>
+                        </div>
+                    </div>
+                    <!-- Engagement -->
+                    <div>
+                        <label class="block text-lg font-medium text-gray-800">Engagement</label>
+                        <div class="star-rating">
+                            <input type="radio" id="e5" name="engagement" value="5" required><label for="e5">&#9733;</label>
+                            <input type="radio" id="e4" name="engagement" value="4"><label for="e4">&#9733;</label>
+                            <input type="radio" id="e3" name="engagement" value="3"><label for="e3">&#9733;</label>
+                            <input type="radio" id="e2" name="engagement" value="2"><label for="e2">&#9733;</label>
+                            <input type="radio" id="e1" name="engagement" value="1"><label for="e1">&#9733;</label>
+                        </div>
+                    </div>
+                    <!-- Pace -->
+                    <div>
+                        <label class="block text-lg font-medium text-gray-800">Pace of the Lecture</label>
+                        <div class="star-rating">
+                            <input type="radio" id="p5" name="pace" value="5" required><label for="p5">&#9733;</label>
+                            <input type="radio" id="p4" name="pace" value="4"><label for="p4">&#9733;</label>
+                            <input type="radio" id="p3" name="pace" value="3"><label for="p3">&#9733;</label>
+                            <input type="radio" id="p2" name="pace" value="2"><label for="p2">&#9733;</label>
+                            <input type="radio" id="p1" name="pace" value="1"><label for="p1">&#9733;</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Text Comments -->
+                <div class="space-y-4">
+                    <div>
+                        <label for="positive-comments" class="block text-sm font-medium text-gray-700">What went well? (Positive Feedback)</label>
+                        <textarea id="positive-comments" name="positive-comments" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                    </div>
+                    <div>
+                        <label for="negative-comments" class="block text-sm font-medium text-gray-700">What could be improved? (Constructive Feedback)</label>
+                        <textarea id="negative-comments" name="negative-comments" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 py-3 px-4 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Submit Feedback
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Success Message -->
+        <div id="success-message" class="hidden bg-white p-8 shadow-2xl rounded-2xl text-center">
+            <h2 class="text-3xl font-extrabold text-gray-900">Thank You!</h2>
+            <p class="mt-4 text-lg text-gray-600">Your feedback has been submitted successfully.</p>
+        </div>
+
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-login-modal" class="hidden no-print fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 transition-opacity">
+        <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <div class="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <h3 class="text-xl font-bold leading-6 text-gray-900">Admin Login</h3>
+                <form id="admin-login-form" class="mt-4 space-y-4">
+                    <div>
+                        <label for="admin-password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="admin-password" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" required>
+                    </div>
+                    <p id="admin-error-message" class="text-sm text-red-600 hidden">Incorrect password. Please try again.</p>
+                    <div class="flex gap-4">
+                        <button type="button" id="admin-cancel-button" class="mt-4 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+                            Cancel
+                        </button>
+                        <button type="submit" class="mt-4 inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700">
+                            Login
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Custom Confirmation Modal -->
+    <div id="confirm-modal" class="hidden no-print fixed inset-0 z-50 overflow-y-auto bg-gray-500 bg-opacity-75 transition-opacity">
+        <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <div class="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                <h3 id="confirm-title" class="text-xl font-bold leading-6 text-gray-900">Are you sure?</h3>
+                <div class="mt-2">
+                    <p id="confirm-message" class="text-sm text-gray-500">Please confirm your action.</p>
+                </div>
+                <div class="mt-6 flex gap-4">
+                    <button type="button" id="confirm-cancel-button" class="mt-4 inline-flex w-full justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-base font-medium text-gray-700 shadow-sm hover:bg-gray-50">
+                        Cancel
+                    </button>
+                    <button type="button" id="confirm-ok-button" class="mt-4 inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            addDoc, 
+            setDoc, 
+            onSnapshot, 
+            collection, 
+            query, 
+            getDocs,
+            deleteDoc,
+            Timestamp 
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CONSTANTS ---
+            const ADMIN_PASSWORD = "admin123";
+            const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key
+            // Reverted to use environment variables
+            const APP_ID_KEY = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const FEEDBACK_COLLECTION = `/artifacts/${APP_ID_KEY}/public/data/lecture-feedback`;
+            const SETTINGS_DOC = `/artifacts/${APP_ID_KEY}/public/data/app-settings/title`;
+
+            // --- STATE ---
+            let db, auth;
+            let isAdminLoggedIn = false;
+            let confirmCallback = null;
+            let feedbackListener = null; // To hold the onSnapshot unsubscribe function
+            let titleListener = null; // To hold the onSnapshot unsubscribe function
+
+            // --- SELECTORS ---
+            const adminButton = document.getElementById('admin-button');
+            const adminLoginModal = document.getElementById('admin-login-modal');
+            const adminLoginForm = document.getElementById('admin-login-form');
+            const adminCancelButton = document.getElementById('admin-cancel-button');
+            const adminErrorMessage = document.getElementById('admin-error-message');
+            
+            const feedbackFormContainer = document.getElementById('feedback-form-container');
+            const feedbackForm = document.getElementById('feedback-form');
+            const successMessage = document.getElementById('success-message');
+            const formTitle = document.getElementById('form-title');
+
+            const adminPanel = document.getElementById('admin-panel');
+            const adminPanelTitle = document.getElementById('admin-panel-title');
+            const logoutButton = document.getElementById('logout-button');
+            const overallRatingDisplay = document.getElementById('overall-rating-display');
+            const ratingCount = document.getElementById('rating-count');
+            
+            const moduleCodeInput = document.getElementById('module-code-input');
+            const saveTitleButton = document.getElementById('save-title-button');
+            const titleSavedMessage = document.getElementById('title-saved-message');
+            
+            const resetFeedbackButton = document.getElementById('reset-feedback-button');
+            const downloadPdfButton = document.getElementById('download-pdf-button');
+            
+            const confirmModal = document.getElementById('confirm-modal');
+            const confirmTitle = document.getElementById('confirm-title');
+            const confirmMessage = document.getElementById('confirm-message');
+            const confirmOkButton = document.getElementById('confirm-ok-button');
+            const confirmCancelButton = document.getElementById('confirm-cancel-button');
+
+            // --- FUNCTIONS ---
+
+            /**
+             * Initializes Firebase and sets up auth.
+             */
+            async function initializeFirebase() {
+                try {
+                    // Reverted to use environment variables from the platform
+                    if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                        console.error("Firebase config is missing.");
+                        displayError("Config Missing", "Firebase configuration is not available.");
+                        return;
+                    }
+
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    // Sign in using the platform's tokens
+                    await new Promise((resolve, reject) => {
+                        onAuthStateChanged(auth, async (user) => {
+                            if (user) {
+                                resolve(user);
+                            } else {
+                                // No user, sign in
+                                try {
+                                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                        await signInWithCustomToken(auth, __initial_auth_token);
+                                    } else {
+                                        await signInAnonymously(auth);
+                                    }
+                                    resolve(auth.currentUser);
+                                } catch (authError) {
+                                    reject(authError);
+                                }
+                            }
+                        });
+                    });
+
+                    // Start listeners and update view
+                    listenForTitle();
+                    updateView();
+
+                } catch (error) {
+                    console.error("Error initializing Firebase:", error);
+                    displayError(error.name, error.message);
+                }
+            }
+            
+            /**
+             * Displays a fatal error in the admin panel and form.
+             */
+            function displayError(title, message) {
+                adminPanelTitle.textContent = "Error";
+                overallRatingDisplay.textContent = title;
+                overallRatingDisplay.classList.add('text-red-600', 'text-5xl');
+                ratingCount.textContent = message;
+                
+                formTitle.textContent = "Error";
+                feedbackFormContainer.innerHTML = `<p class="text-center text-red-600">${title}: ${message}</p>`;
+                
+                // Disable all buttons
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => btn.disabled = true);
+            }
+
+            /**
+             * Shows or hides UI elements based on admin login status.
+             */
+            function updateView() {
+                if (!db) return; // Don't do anything if DB isn't ready
+
+                if (isAdminLoggedIn) {
+                    feedbackFormContainer.classList.add('hidden');
+                    successMessage.classList.add('hidden');
+                    adminPanel.classList.remove('hidden');
+                    adminButton.classList.add('hidden');
+                    
+                    // Start admin listeners
+                    listenForFeedback(); 
+                    loadAdminPanelData();
+                } else {
+                    // Stop admin listener
+                    if (feedbackListener) {
+                        feedbackListener(); // Unsubscribe
+                        feedbackListener = null;
+                    }
+
+                    // Check if user has already submitted (from localStorage)
+                    if (localStorage.getItem(SUBMITTED_KEY)) {
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                    } else {
+                        feedbackFormContainer.classList.remove('hidden');
+                        successMessage.classList.add('hidden');
+                    }
+                    adminPanel.classList.add('hidden');
+                    adminButton.classList.remove('hidden');
+                }
+                adminLoginModal.classList.add('hidden');
+            }
+
+            /**
+             * Loads one-time data for the admin panel (like module code).
+             */
+            async function loadAdminPanelData() {
+                try {
+                    const docRef = doc(db, SETTINGS_DOC);
+                    const docSnap = await getDoc(docRef);
+                    let moduleCode = "";
+                    if (docSnap.exists()) {
+                        moduleCode = docSnap.data().moduleCode || "";
+                    }
+                    moduleCodeInput.value = moduleCode;
+                    const adminTitle = moduleCode ? `${moduleCode}: Overall Lecture Rating` : "Overall Lecture Rating";
+                    adminPanelTitle.textContent = adminTitle;
+                } catch (error) {
+                    console.error("Error loading module code:", error);
+                }
+            }
+
+            /**
+             * Listens for feedback data from Firestore and updates the admin panel.
+             */
+            function listenForFeedback() {
+                if (feedbackListener) feedbackListener(); // Unsubscribe from old listener
+
+                const q = query(collection(db, FEEDBACK_COLLECTION));
+                feedbackListener = onSnapshot(q, (querySnapshot) => {
+                    const feedback = [];
+                    querySnapshot.forEach((doc) => {
+                        feedback.push(doc.data());
+                    });
+                    
+                    calculateOverallRating(feedback);
+                    renderFeedbackTable(feedback);
+                }, (error) => {
+                    console.error("Error listening for feedback:", error);
+                    displayError("Listener Error", "Could not get feedback data.");
+                });
+            }
+
+            /**
+             * Listens for title changes from Firestore and updates the student form.
+             */
+            function listenForTitle() {
+                if (titleListener) titleListener(); // Unsubscribe from old listener
+
+                titleListener = onSnapshot(doc(db, SETTINGS_DOC), (docSnap) => {
+                    let moduleCode = "";
+                    if (docSnap.exists()) {
+                        moduleCode = docSnap.data().moduleCode || "";
+                    }
+                    
+                    if (moduleCode) {
+                        formTitle.textContent = `${moduleCode}: Submit your feedback for today's session`;
+                    } else {
+                        formTitle.textContent = "Submit your feedback for today's session";
+                    }
+                }, (error) => {
+                    console.error("Error listening for title:", error);
+                    // Don't show a fatal error, just use the default title
+                    formTitle.textContent = "Submit your feedback for today's session";
+                });
+            }
+
+            /**
+             * Calculates and displays the overall average rating.
+             */
+            function calculateOverallRating(feedback) {
+                if (feedback.length === 0) {
+                    overallRatingDisplay.textContent = '-- / 5.0';
+                    ratingCount.textContent = '(No submissions yet)';
+                    return;
+                }
+
+                const totalSum = feedback.reduce((acc, entry) => acc + entry.average, 0);
+                const overallAverage = totalSum / feedback.length;
+
+                overallRatingDisplay.textContent = `${overallAverage.toFixed(1)} / 5.0`;
+                ratingCount.textContent = `(Based on ${feedback.length} submission${feedback.length === 1 ? '' : 's'})`;
+            }
+
+            /**
+             * Renders the feedback data into the admin table.
+             */
+            function renderFeedbackTable(feedback) {
+                const tableBody = document.getElementById('feedback-table-body');
+                if (!tableBody) {
+                    console.error("Feedback table body not found!");
+                    return;
+                }
+                
+                tableBody.innerHTML = ''; // Clear existing table
+                
+                if (feedback.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No feedback submitted yet.</td></tr>';
+                    return;
+                }
+
+                // Sort feedback by timestamp, newest first
+                feedback.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+
+                feedback.forEach(entry => {
+                    const row = document.createElement('tr');
+                    const submittedDate = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : 'N/A';
+                    
+                    row.innerHTML = `
+                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.clarity}</td>
+                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.engagement}</td>
+                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.pace}</td>
+                        <td class="py-4 px-4 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words">${entry.positive || ''}</td>
+                        <td class="py-4 px-4 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words">${entry.negative || ''}</td>
+                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${submittedDate}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            /**
+             * Handles the student feedback form submission.
+             */
+            async function handleFormSubmit(e) {
+                e.preventDefault();
+                
+                showCustomConfirm(
+                    "Submit Feedback?",
+                    "Are you sure you want to submit this feedback? You cannot edit it later.",
+                    async () => {
+                        // --- This runs if user clicks "Confirm" ---
+                        try {
+                            const formData = new FormData(feedbackForm);
+                            const clarity = parseFloat(formData.get('clarity'));
+                            const engagement = parseFloat(formData.get('engagement'));
+                            const pace = parseFloat(formData.get('pace'));
+                            
+                            const newFeedback = {
+                                clarity,
+                                engagement,
+                                pace,
+                                positive: formData.get('positive-comments'),
+                                negative: formData.get('negative-comments'),
+                                average: (clarity + engagement + pace) / 3,
+                                timestamp: Timestamp.now()
+                            };
+
+                            // Add to Firestore
+                            await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedback);
+
+                            // Set submitted flag in localStorage
+                            localStorage.setItem(SUBMITTED_KEY, 'true');
+
+                            // Update UI
+                            feedbackFormContainer.classList.add('hidden');
+                            successMessage.classList.remove('hidden');
+                        
+                        } catch (error) {
+                            console.error("Error adding document: ", error);
+                            alert("Error: Could not submit feedback. Please try again.");
+                        }
+                    },
+                    "Submit" // Change confirm button text
+                );
+            }
+
+            /**
+             * Handles the admin login form submission.
+             */
+            function handleLoginFormSubmit(e) {
+                e.preventDefault();
+                const password = document.getElementById('admin-password').value;
+                if (password === ADMIN_PASSWORD) {
+                    isAdminLoggedIn = true;
+                    adminErrorMessage.classList.add('hidden');
+                    adminLoginForm.reset();
+                    updateView();
+                } else {
+                    adminErrorMessage.classList.remove('hidden');
+                }
+            }
+
+            /**
+             * Logs the admin out.
+             */
+            function handleLogout() {
+                isAdminLoggedIn = false;
+                updateView();
+            }
+
+            /**
+             * Saves the module code to Firestore.
+             */
+            async function handleSaveTitle() {
+                const newTitle = moduleCodeInput.value.trim();
+                try {
+                    await setDoc(doc(db, SETTINGS_DOC), { moduleCode: newTitle });
+                    
+                    // Update admin panel title immediately
+                    const adminTitle = newTitle ? `${newTitle}: Overall Lecture Rating` : "Overall Lecture Rating";
+                    adminPanelTitle.textContent = adminTitle;
+
+                    // Show saved message
+                    titleSavedMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        titleSavedMessage.classList.add('hidden');
+                    }, 2000);
+                } catch (error) {
+                    console.error("Error saving title:", error);
+                    alert("Error: Could not save module code.");
+                }
+            }
+
+            /**
+             * Resets all feedback data from Firestore.
+             */
+            async function resetAllFeedback() {
+                showCustomConfirm(
+                    "Reset All Feedback?",
+                    "This will delete *all* feedback from the database permanently. This action cannot be undone.",
+                    async () => {
+                        try {
+                            const q = query(collection(db, FEEDBACK_COLLECTION));
+                            const querySnapshot = await getDocs(q);
+                            
+                            // Delete all documents in parallel
+                            const deletePromises = [];
+                            querySnapshot.forEach((doc) => {
+                                deletePromises.push(deleteDoc(doc.ref));
+                            });
+                            await Promise.all(deletePromises);
+                            
+                            // Also clear the title
+                            await setDoc(doc(db, SETTINGS_DOC), { moduleCode: "" });
+                            
+                            // Clear local submitted flags (optional, but good for testing)
+                            localStorage.removeItem(SUBMITTED_KEY);
+                            
+                            console.log("All feedback reset.");
+                            loadAdminPanelData(); // Refresh admin panel
+                        } catch (error) {
+                            console.error("Error resetting feedback:", error);
+                            alert("Error: Could not reset feedback.");
+                        }
+                    }
+                );
+            }
+
+            /**
+             * Handles the PDF download.
+             */
+            async function handleDownloadPdf() {
+                const { jsPDF } = window.jspdf;
+                const content = document.getElementById('pdf-content-wrapper');
+                
+                if (!content) {
+                    console.error("PDF content wrapper not found!");
+                    return;
+                }
+                
+                // Add a class to temporarily set a defined width for capture
+                content.classList.add('w-[1024px]', 'pdf-export');
+                
+                try {
+                    const canvas = await html2canvas(content, {
+                        scale: 2, // Higher scale for better quality
+                        useCORS: true,
+                        logging: false
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'px',
+                        format: [canvas.width, canvas.height]
+                    });
+
+                    pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                    
+                    // Add date/time to the bottom
+                    const generatedTime = `Report Generated: ${new Date().toLocaleString()}`;
+                    pdf.setFontSize(10);
+                    const textWidth = pdf.getStringUnitWidth(generatedTime) * pdf.getFontSize() / pdf.internal.scaleFactor;
+                    const textX = (canvas.width - textWidth) / 2;
+                    pdf.text(generatedTime, textX, canvas.height - 20);
+                    
+                    const moduleCode = moduleCodeInput.value.trim() || "Feedback-Report";
+                    pdf.save(`${moduleCode.replace(/[^a-z0-9]/gi, '_')}-Report.pdf`);
+
+                } catch (error) {
+                    console.error("Error generating PDF:", error);
+                    alert("Could not generate PDF. See console for details.");
+                } finally {
+                    // Clean up class
+                    content.classList.remove('w-[1024px]', 'pdf-export');
+                }
+            }
+            
+            // --- Custom Modals ---
+
+            /**
+             * Shows the custom confirmation modal.
+             * @param {string} title - The title for the modal.
+             * @param {string} message - The message body.
+             * @param {function} onConfirm - The callback function to run if "OK" is clicked.
+             * @param {string} [okText='Confirm'] - Optional text for the confirm button.
+             */
+            function showCustomConfirm(title, message, onConfirm, okText = 'Confirm') {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+                confirmOkButton.textContent = okText;
+                
+                // Set button color
+                if (okText.toLowerCase().includes('submit')) {
+                    confirmOkButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    confirmOkButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                } else {
+                    confirmOkButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                    confirmOkButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                }
+                
+                confirmCallback = onConfirm; // Store the callback
+                confirmModal.classList.remove('hidden');
+            }
+
+            /**
+             * Hides the custom confirmation modal.
+             */
+            function hideCustomConfirm() {
+                confirmCallback = null; // Clear the callback
+                confirmModal.classList.add('hidden');
+            }
+
+            // --- EVENT LISTENERS ---
+            adminButton.addEventListener('click', () => adminLoginModal.classList.remove('hidden'));
+            adminCancelButton.addEventListener('click', () => adminLoginModal.classList.add('hidden'));
+            adminLoginForm.addEventListener('submit', handleLoginFormSubmit);
+            logoutButton.addEventListener('click', handleLogout);
+            
+            feedbackForm.addEventListener('submit', handleFormSubmit);
+            
+            saveTitleButton.addEventListener('click', handleSaveTitle);
+            resetFeedbackButton.addEventListener('click', resetAllFeedback);
+            downloadPdfButton.addEventListener('click', handleDownloadPdf);
+            
+            // Confirmation modal buttons
+            confirmCancelButton.addEventListener('click', hideCustomConfirm);
+            confirmOkButton.addEventListener('click', () => {
+                if (typeof confirmCallback === 'function') {
+                    confirmCallback(); // Execute the stored callback
+                }
+                hideCustomConfirm(); // Hide modal after action
+            });
+
+            // --- INITIALIZATION ---
+            initializeFirebase(); // Start the app
+        });
+    </script>
+</body>
+</html>
+

@@ -331,73 +331,93 @@
                     };
 
                     console.log("Firebase config loaded. Validating...");
+                    
+                    // Clean and trim all config values to remove any invisible characters
+                    const cleanConfig = {
+                        apiKey: (firebaseConfig.apiKey || '').toString().trim(),
+                        authDomain: (firebaseConfig.authDomain || '').toString().trim(),
+                        projectId: (firebaseConfig.projectId || '').toString().trim(),
+                        storageBucket: (firebaseConfig.storageBucket || '').toString().trim(),
+                        messagingSenderId: (firebaseConfig.messagingSenderId || '').toString().trim(),
+                        appId: (firebaseConfig.appId || '').toString().trim()
+                    };
+                    
                     console.log("Config preview:", {
-                        apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 15)}...` : 'MISSING',
-                        authDomain: firebaseConfig.authDomain || 'MISSING',
-                        projectId: firebaseConfig.projectId || 'MISSING'
+                        apiKey: cleanConfig.apiKey ? `${cleanConfig.apiKey.substring(0, 15)}...` : 'MISSING',
+                        authDomain: cleanConfig.authDomain || 'MISSING',
+                        projectId: cleanConfig.projectId || 'MISSING'
                     });
+                    
+                    // Debug raw values and their exact content
+                    console.log("Raw config values for debugging:");
+                    console.log("- apiKey length:", cleanConfig.apiKey.length);
+                    console.log("- apiKey chars:", JSON.stringify(cleanConfig.apiKey));
+                    console.log("- authDomain length:", cleanConfig.authDomain.length);
+                    console.log("- authDomain chars:", JSON.stringify(cleanConfig.authDomain));
+                    console.log("- projectId length:", cleanConfig.projectId.length);
+                    console.log("- projectId chars:", JSON.stringify(cleanConfig.projectId));
 
-                    // Debug each validation condition
+                    // Debug each validation condition using cleaned values
                     console.log("Validation checks:");
-                    console.log("- apiKey === placeholder:", firebaseConfig.apiKey === "YOUR_API_KEY_HERE");
-                    console.log("- authDomain === placeholder:", firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
-                    console.log("- projectId === placeholder:", firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE");
-                    console.log("- apiKey missing:", !firebaseConfig.apiKey);
-                    console.log("- authDomain missing:", !firebaseConfig.authDomain);
-                    console.log("- projectId missing:", !firebaseConfig.projectId);
-                    console.log("- apiKey too short:", firebaseConfig.apiKey && firebaseConfig.apiKey.length < 10);
-                    console.log("- authDomain no dot:", firebaseConfig.authDomain && !firebaseConfig.authDomain.includes('.'));
-                    console.log("- projectId too short:", firebaseConfig.projectId && firebaseConfig.projectId.length < 3);
+                    console.log("- apiKey === placeholder:", cleanConfig.apiKey === "YOUR_API_KEY_HERE");
+                    console.log("- authDomain === placeholder:", cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
+                    console.log("- projectId === placeholder:", cleanConfig.projectId === "YOUR_PROJECT_ID_HERE");
+                    console.log("- apiKey missing:", !cleanConfig.apiKey);
+                    console.log("- authDomain missing:", !cleanConfig.authDomain);
+                    console.log("- projectId missing:", !cleanConfig.projectId);
+                    console.log("- apiKey too short:", cleanConfig.apiKey && cleanConfig.apiKey.length < 10);
+                    console.log("- authDomain no dot:", cleanConfig.authDomain && !cleanConfig.authDomain.includes('.'));
+                    console.log("- projectId too short:", cleanConfig.projectId && cleanConfig.projectId.length < 3);
 
-                    // Check if placeholders are still present or if values are invalid
+                    // Check if placeholders are still present or if values are invalid using cleaned values
                     const isInvalidConfig = (
-                        firebaseConfig.apiKey === "YOUR_API_KEY_HERE" ||
-                        firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE" ||
-                        firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE" ||
-                        !firebaseConfig.apiKey ||
-                        !firebaseConfig.authDomain ||
-                        !firebaseConfig.projectId ||
-                        firebaseConfig.apiKey.length < 10 ||
-                        !firebaseConfig.authDomain.includes('.') ||
-                        firebaseConfig.projectId.length < 3
+                        cleanConfig.apiKey === "YOUR_API_KEY_HERE" ||
+                        cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE" ||
+                        cleanConfig.projectId === "YOUR_PROJECT_ID_HERE" ||
+                        !cleanConfig.apiKey ||
+                        !cleanConfig.authDomain ||
+                        !cleanConfig.projectId ||
+                        cleanConfig.apiKey.length < 10 ||
+                        !cleanConfig.authDomain.includes('.') ||
+                        cleanConfig.projectId.length < 3
                     );
 
                     console.log("Overall validation result - isInvalidConfig:", isInvalidConfig);
 
                     if (isInvalidConfig) {
-                        console.error("Firebase config is not set properly. Config values:", firebaseConfig);
+                        console.error("Firebase config is not set properly. Config values:", cleanConfig);
                         
                         let errorDetails = "Firebase configuration issues detected:\n";
                         
-                        // Check each condition individually and report exactly what's wrong
-                        if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                        // Check each condition individually and report exactly what's wrong using cleaned values
+                        if (cleanConfig.apiKey === "YOUR_API_KEY_HERE") {
                             errorDetails += "• API Key placeholder not replaced\n";
-                        } else if (!firebaseConfig.apiKey) {
+                        } else if (!cleanConfig.apiKey) {
                             errorDetails += "• API Key is empty\n";
-                        } else if (firebaseConfig.apiKey.length < 10) {
-                            errorDetails += `• API Key appears invalid (length: ${firebaseConfig.apiKey.length})\n`;
+                        } else if (cleanConfig.apiKey.length < 10) {
+                            errorDetails += `• API Key appears invalid (length: ${cleanConfig.apiKey.length})\n`;
                         }
                         
-                        if (firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE") {
+                        if (cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE") {
                             errorDetails += "• Auth Domain placeholder not replaced\n";
-                        } else if (!firebaseConfig.authDomain) {
+                        } else if (!cleanConfig.authDomain) {
                             errorDetails += "• Auth Domain is empty\n";
-                        } else if (!firebaseConfig.authDomain.includes('.')) {
-                            errorDetails += `• Auth Domain appears invalid (no dot): ${firebaseConfig.authDomain}\n`;
+                        } else if (!cleanConfig.authDomain.includes('.')) {
+                            errorDetails += `• Auth Domain appears invalid (no dot): ${cleanConfig.authDomain}\n`;
                         }
                         
-                        if (firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") {
+                        if (cleanConfig.projectId === "YOUR_PROJECT_ID_HERE") {
                             errorDetails += "• Project ID placeholder not replaced\n";
-                        } else if (!firebaseConfig.projectId) {
+                        } else if (!cleanConfig.projectId) {
                             errorDetails += "• Project ID is empty\n";
-                        } else if (firebaseConfig.projectId.length < 3) {
-                            errorDetails += `• Project ID appears invalid (length: ${firebaseConfig.projectId.length})\n`;
+                        } else if (cleanConfig.projectId.length < 3) {
+                            errorDetails += `• Project ID appears invalid (length: ${cleanConfig.projectId.length})\n`;
                         }
                         
                         // If none of the above, there might be a logic error
                         if (errorDetails === "Firebase configuration issues detected:\n") {
                             errorDetails += "• Unknown validation error - all values appear correct\n";
-                            errorDetails += `• Debug: apiKey length=${firebaseConfig.apiKey?.length}, authDomain=${firebaseConfig.authDomain}, projectId length=${firebaseConfig.projectId?.length}\n`;
+                            errorDetails += `• Debug: apiKey length=${cleanConfig.apiKey?.length}, authDomain=${cleanConfig.authDomain}, projectId length=${cleanConfig.projectId?.length}\n`;
                         }
                         
                         displayError("Config Error", errorDetails);
@@ -406,9 +426,19 @@
 
                     console.log("✅ Firebase config validation passed successfully!");
                     console.log("Initializing Firebase app with valid configuration...");
+                    
+                    // Use the cleaned config for Firebase initialization
+                    const validFirebaseConfig = {
+                        apiKey: cleanConfig.apiKey,
+                        authDomain: cleanConfig.authDomain,
+                        projectId: cleanConfig.projectId,
+                        storageBucket: cleanConfig.storageBucket,
+                        messagingSenderId: cleanConfig.messagingSenderId,
+                        appId: cleanConfig.appId
+                    };
 
                     console.log("Firebase config validation passed. Initializing app...");
-                    const app = initializeApp(firebaseConfig);
+                    const app = initializeApp(validFirebaseConfig);
                     console.log("Firebase app initialized successfully");
                     
                     db = getFirestore(app);

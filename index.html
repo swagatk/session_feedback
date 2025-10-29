@@ -319,6 +319,11 @@
                 try {
                     console.log("Starting Firebase initialization...");
                     
+                    // Define placeholder strings that won't be replaced by GitHub Actions
+                    const PLACEHOLDER_API = "YOUR" + "_API_KEY_" + "HERE";
+                    const PLACEHOLDER_AUTH = "YOUR" + "_AUTH_DOMAIN_" + "HERE";
+                    const PLACEHOLDER_PROJECT = "YOUR" + "_PROJECT_ID_" + "HERE";
+                    
                     // --- IMPORTANT ---
                     // These placeholders will be replaced by the GitHub Action
                     const firebaseConfig = {
@@ -360,28 +365,28 @@
                     // Debug each validation condition using cleaned values
                     console.log("Validation checks:");
                     
-                    // Explicit comparison debugging
+                    // Explicit comparison debugging - use strings that won't be replaced by GitHub Actions
                     console.log("=== DETAILED COMPARISON DEBUG ===");
                     console.log("apiKey comparison:");
                     console.log("  cleanConfig.apiKey:", JSON.stringify(cleanConfig.apiKey));
-                    console.log("  placeholder:", JSON.stringify("YOUR_API_KEY_HERE"));
-                    console.log("  equal?:", cleanConfig.apiKey === "YOUR_API_KEY_HERE");
-                    console.log("  equal (loose)?:", cleanConfig.apiKey == "YOUR_API_KEY_HERE");
+                    console.log("  placeholder:", JSON.stringify(PLACEHOLDER_API));
+                    console.log("  equal?:", cleanConfig.apiKey === PLACEHOLDER_API);
+                    console.log("  equal (loose)?:", cleanConfig.apiKey == PLACEHOLDER_API);
                     
                     console.log("authDomain comparison:");
                     console.log("  cleanConfig.authDomain:", JSON.stringify(cleanConfig.authDomain));
-                    console.log("  placeholder:", JSON.stringify("YOUR_AUTH_DOMAIN_HERE"));
-                    console.log("  equal?:", cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
+                    console.log("  placeholder:", JSON.stringify(PLACEHOLDER_AUTH));
+                    console.log("  equal?:", cleanConfig.authDomain === PLACEHOLDER_AUTH);
                     
                     console.log("projectId comparison:");
                     console.log("  cleanConfig.projectId:", JSON.stringify(cleanConfig.projectId));
-                    console.log("  placeholder:", JSON.stringify("YOUR_PROJECT_ID_HERE"));
-                    console.log("  equal?:", cleanConfig.projectId === "YOUR_PROJECT_ID_HERE");
+                    console.log("  placeholder:", JSON.stringify(PLACEHOLDER_PROJECT));
+                    console.log("  equal?:", cleanConfig.projectId === PLACEHOLDER_PROJECT);
                     console.log("=== END DETAILED DEBUG ===");
                     
-                    console.log("- apiKey === placeholder:", cleanConfig.apiKey === "YOUR_API_KEY_HERE");
-                    console.log("- authDomain === placeholder:", cleanConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE");
-                    console.log("- projectId === placeholder:", cleanConfig.projectId === "YOUR_PROJECT_ID_HERE");
+                    console.log("- apiKey === placeholder:", cleanConfig.apiKey === PLACEHOLDER_API);
+                    console.log("- authDomain === placeholder:", cleanConfig.authDomain === PLACEHOLDER_AUTH);
+                    console.log("- projectId === placeholder:", cleanConfig.projectId === PLACEHOLDER_PROJECT);
                     console.log("- apiKey missing:", !cleanConfig.apiKey);
                     console.log("- authDomain missing:", !cleanConfig.authDomain);
                     console.log("- projectId missing:", !cleanConfig.projectId);
@@ -390,11 +395,11 @@
                     console.log("- projectId too short:", cleanConfig.projectId && cleanConfig.projectId.length < 3);
 
                     // Check if placeholders are still present or if values are invalid using cleaned values
-                    // TEMPORARY: Simplified validation to bypass the mysterious comparison issue
+                    // Use placeholder strings that won't be replaced by GitHub Actions
                     const hasPlaceholders = (
-                        cleanConfig.apiKey.includes("YOUR_API_KEY_HERE") ||
-                        cleanConfig.authDomain.includes("YOUR_AUTH_DOMAIN_HERE") ||
-                        cleanConfig.projectId.includes("YOUR_PROJECT_ID_HERE")
+                        cleanConfig.apiKey.includes(PLACEHOLDER_API) ||
+                        cleanConfig.authDomain.includes(PLACEHOLDER_AUTH) ||
+                        cleanConfig.projectId.includes(PLACEHOLDER_PROJECT)
                     );
                     
                     const hasEmptyValues = (

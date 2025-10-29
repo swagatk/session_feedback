@@ -1,2 +1,15 @@
 # Feedback form
 - not working
+o
+
+FIREBASE_API_KEY
+26 minutes ago
+FIREBASE_APP_ID
+26 minutes ago
+FIREBASE_AUTH_DOMAIN
+25 minutes ago
+FIREBASE_MESSAGING_SENDER_ID
+25 minutes ago
+FIREBASE_PROJECT_ID
+24 minutes ago
+FIREBASE_STORAGE_BUCKET

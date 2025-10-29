@@ -249,7 +249,7 @@
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { 
             getFirestore, 
             doc, 
@@ -268,10 +268,9 @@
             // --- CONSTANTS ---
             const ADMIN_PASSWORD = "admin123";
             const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key
-            // Reverted to use environment variables
-            const APP_ID_KEY = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const FEEDBACK_COLLECTION = `/artifacts/${APP_ID_KEY}/public/data/lecture-feedback`;
-            const SETTINGS_DOC = `/artifacts/${APP_ID_KEY}/public/data/app-settings/title`;
+            // Simplified paths for GitHub deployment
+            const FEEDBACK_COLLECTION = `lecture-feedback`;
+            const SETTINGS_DOC = `app-settings/title`;
 
             // --- STATE ---
             let db, auth;
@@ -318,19 +317,29 @@
              */
             async function initializeFirebase() {
                 try {
-                    // Reverted to use environment variables from the platform
-                    if (typeof __firebase_config === 'undefined' || !__firebase_config) {
-                        console.error("Firebase config is missing.");
-                        displayError("Config Missing", "Firebase configuration is not available.");
+                    // --- IMPORTANT ---
+                    // These placeholders will be replaced by the GitHub Action
+                    const firebaseConfig = {
+                        apiKey: "YOUR_API_KEY_HERE",
+                        authDomain: "YOUR_AUTH_DOMAIN_HERE",
+                        projectId: "YOUR_PROJECT_ID_HERE",
+                        storageBucket: "YOUR_STORAGE_BUCKET_HERE",
+                        messagingSenderId: "YOUR_MESSAGING_SENDER_ID_HERE",
+                        appId: "YOUR_APP_ID_HERE"
+                    };
+
+                    // Check if placeholders are still present
+                    if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") {
+                        console.error("Firebase config is not set. Placeholders are still present.");
+                        displayError("Config Missing", "Firebase configuration is not available. Deployment may have failed.");
                         return;
                     }
 
-                    const firebaseConfig = JSON.parse(__firebase_config);
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
 
-                    // Sign in using the platform's tokens
+                    // Sign in anonymously for GitHub deployment
                     await new Promise((resolve, reject) => {
                         onAuthStateChanged(auth, async (user) => {
                             if (user) {
@@ -338,11 +347,7 @@
                             } else {
                                 // No user, sign in
                                 try {
-                                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                        await signInWithCustomToken(auth, __initial_auth_token);
-                                    } else {
-                                        await signInAnonymously(auth);
-                                    }
+                                    await signInAnonymously(auth);
                                     resolve(auth.currentUser);
                                 } catch (authError) {
                                     reject(authError);
@@ -454,7 +459,7 @@
                 });
             }
 
-            /**
+/**
              * Listens for title changes from Firestore and updates the student form.
              */
             function listenForTitle() {

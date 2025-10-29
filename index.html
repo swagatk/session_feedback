@@ -331,19 +331,23 @@
                     };
 
                     console.log("Firebase config loaded. Validating...");
+                    console.log("Config preview:", {
+                        apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 15)}...` : 'MISSING',
+                        authDomain: firebaseConfig.authDomain || 'MISSING',
+                        projectId: firebaseConfig.projectId || 'MISSING'
+                    });
 
                     // Check if placeholders are still present or if values are invalid
                     const isInvalidConfig = (
                         firebaseConfig.apiKey === "YOUR_API_KEY_HERE" ||
-                        firebaseConfig.apiKey === "***" ||
-                        !firebaseConfig.apiKey ||
-                        firebaseConfig.apiKey.length < 10 ||
                         firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE" ||
-                        firebaseConfig.authDomain === "***" ||
-                        !firebaseConfig.authDomain ||
                         firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE" ||
-                        firebaseConfig.projectId === "***" ||
-                        !firebaseConfig.projectId
+                        !firebaseConfig.apiKey ||
+                        !firebaseConfig.authDomain ||
+                        !firebaseConfig.projectId ||
+                        firebaseConfig.apiKey.length < 10 ||
+                        !firebaseConfig.authDomain.includes('.') ||
+                        firebaseConfig.projectId.length < 3
                     );
 
                     if (isInvalidConfig) {
@@ -358,18 +362,21 @@
                         
                         let errorDetails = "Firebase configuration issues detected:\n";
                         if (firebaseConfig.apiKey === "YOUR_API_KEY_HERE") errorDetails += "• API Key placeholder not replaced\n";
-                        if (firebaseConfig.apiKey === "***") errorDetails += "• API Key is masked/hidden\n";
                         if (!firebaseConfig.apiKey) errorDetails += "• API Key is empty\n";
+                        if (firebaseConfig.apiKey && firebaseConfig.apiKey.length < 10) errorDetails += "• API Key appears invalid (too short)\n";
                         if (firebaseConfig.authDomain === "YOUR_AUTH_DOMAIN_HERE") errorDetails += "• Auth Domain placeholder not replaced\n";
-                        if (firebaseConfig.authDomain === "***") errorDetails += "• Auth Domain is masked/hidden\n";
                         if (!firebaseConfig.authDomain) errorDetails += "• Auth Domain is empty\n";
+                        if (firebaseConfig.authDomain && !firebaseConfig.authDomain.includes('.')) errorDetails += "• Auth Domain appears invalid (no domain)\n";
                         if (firebaseConfig.projectId === "YOUR_PROJECT_ID_HERE") errorDetails += "• Project ID placeholder not replaced\n";
-                        if (firebaseConfig.projectId === "***") errorDetails += "• Project ID is masked/hidden\n";
                         if (!firebaseConfig.projectId) errorDetails += "• Project ID is empty\n";
+                        if (firebaseConfig.projectId && firebaseConfig.projectId.length < 3) errorDetails += "• Project ID appears invalid (too short)\n";
                         
                         displayError("Config Error", errorDetails);
                         return;
                     }
+
+                    console.log("✅ Firebase config validation passed successfully!");
+                    console.log("Initializing Firebase app with valid configuration...");
 
                     console.log("Firebase config validation passed. Initializing app...");
                     const app = initializeApp(firebaseConfig);

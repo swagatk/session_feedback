@@ -18,25 +18,69 @@ jobs:
       - name: Checkout your repository
         uses: actions/checkout@v4
 
-      - name: Replace Firebase config placeholders
+      - name: Check for Firebase secrets
         run: |
-          # Show file before replacement (for debugging)
-          echo "File content before replacement:"
+          echo "🔍 Checking for Firebase configuration secrets..."
+          echo "Current repository: ${{ github.repository }}"
+          echo "Current branch: ${{ github.ref }}"
+          
+          # List some common secret patterns that might exist
+          echo "📝 You need to set up the following secrets in your GitHub repository:"
+          echo "   Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+          echo "   Add these secrets:"
+          echo "   - FIREBASE_API_KEY"
+          echo "   - FIREBASE_AUTH_DOMAIN" 
+          echo "   - FIREBASE_PROJECT_ID"
+          echo "   - FIREBASE_STORAGE_BUCKET"
+          echo "   - FIREBASE_MESSAGING_SENDER_ID"
+          echo "   - FIREBASE_APP_ID"
+          echo ""
+          echo "⚠️  Without these secrets, the Firebase configuration cannot be set up!"
+          echo "⚠️  The app will show 'Config Missing' error until secrets are configured."
+          
+      - name: Replace Firebase config placeholders (will fail without secrets)
+        run: |
+          # Show file before replacement
+          echo "📄 File content before replacement:"
           grep -n "YOUR_.*_HERE" index.html || echo "No placeholders found"
           
-          # Find and replace each placeholder in index.html with the secret value
-          # Using '#' as the delimiter for sed to avoid conflicts with special chars in secrets
-          # Adding the 'g' flag to replace all instances of each placeholder
-          sed -i "s#YOUR_API_KEY_HERE#${{ secrets.FIREBASE_API_KEY }}#g" index.html
-          sed -i "s#YOUR_AUTH_DOMAIN_HERE#${{ secrets.FIREBASE_AUTH_DOMAIN }}#g" index.html
-          sed -i "s#YOUR_PROJECT_ID_HERE#${{ secrets.FIREBASE_PROJECT_ID }}#g" index.html
-          sed -i "s#YOUR_STORAGE_BUCKET_HERE#${{ secrets.FIREBASE_STORAGE_BUCKET }}#g" index.html
-          sed -i "s#YOUR_MESSAGING_SENDER_ID_HERE#${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}#g" index.html
-          sed -i "s#YOUR_APP_ID_HERE#${{ secrets.FIREBASE_APP_ID }}#g" index.html
+          # Check if required secrets exist (this will show in logs if they're set)
+          echo "🔐 Checking secret availability..."
+          if [ -n "${{ secrets.FIREBASE_API_KEY }}" ]; then
+            echo "✅ FIREBASE_API_KEY is set"
+          else
+            echo "❌ FIREBASE_API_KEY is NOT set"
+          fi
           
-          # Show file after replacement (for debugging)
-          echo "File content after replacement:"
-          grep -n "YOUR_.*_HERE" index.html || echo "All placeholders successfully replaced"
+          if [ -n "${{ secrets.FIREBASE_AUTH_DOMAIN }}" ]; then
+            echo "✅ FIREBASE_AUTH_DOMAIN is set"
+          else
+            echo "❌ FIREBASE_AUTH_DOMAIN is NOT set"
+          fi
+          
+          if [ -n "${{ secrets.FIREBASE_PROJECT_ID }}" ]; then
+            echo "✅ FIREBASE_PROJECT_ID is set"
+          else
+            echo "❌ FIREBASE_PROJECT_ID is NOT set"
+          fi
+          
+          # Proceed with replacement (even if secrets are empty - this will help debug)
+          echo "🔄 Attempting replacements..."
+          
+          sed "s#YOUR_API_KEY_HERE#${{ secrets.FIREBASE_API_KEY }}#g" index.html > temp1.html && mv temp1.html index.html
+          sed "s#YOUR_AUTH_DOMAIN_HERE#${{ secrets.FIREBASE_AUTH_DOMAIN }}#g" index.html > temp2.html && mv temp2.html index.html
+          sed "s#YOUR_PROJECT_ID_HERE#${{ secrets.FIREBASE_PROJECT_ID }}#g" index.html > temp3.html && mv temp3.html index.html
+          sed "s#YOUR_STORAGE_BUCKET_HERE#${{ secrets.FIREBASE_STORAGE_BUCKET }}#g" index.html > temp4.html && mv temp4.html index.html
+          sed "s#YOUR_MESSAGING_SENDER_ID_HERE#${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}#g" index.html > temp5.html && mv temp5.html index.html
+          sed "s#YOUR_APP_ID_HERE#${{ secrets.FIREBASE_APP_ID }}#g" index.html > temp6.html && mv temp6.html index.html
+          
+          # Show file after replacement
+          echo "📄 File content after replacement:"
+          grep -n "YOUR_.*_HERE" index.html || echo "All placeholders replaced (check if with actual values or empty)"
+          
+          # Show a sample of the Firebase config section (safely)
+          echo "🔍 Firebase config section preview:"
+          grep -A 8 "const firebaseConfig" index.html | head -10
       
       - name: Verify replacement
         run: |

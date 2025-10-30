@@ -354,6 +354,8 @@
             // Simplified paths for GitHub deployment
             const FEEDBACK_COLLECTION = `lecture-feedback`;
             const SETTINGS_DOC = `app-settings/title`;
+            // Admin email authorization
+            const ADMIN_EMAILS = ['swagat.kumar@gmail.com']; // Only these emails can access admin panel
 
             // --- STATE ---
             let db, auth;
@@ -584,9 +586,21 @@
                         currentUser = user;
                         
                         if (user && !user.isAnonymous) {
-                            // Admin user logged in
-                            isAdminLoggedIn = true;
-                            adminEmailDisplay.textContent = user.email;
+                            // Check if this email is authorized as admin
+                            if (ADMIN_EMAILS.includes(user.email)) {
+                                // Authorized admin user logged in
+                                isAdminLoggedIn = true;
+                                adminEmailDisplay.textContent = user.email;
+                                console.log("Admin access granted for:", user.email);
+                            } else {
+                                // Unauthorized email - sign them out
+                                console.log("Unauthorized admin attempt:", user.email);
+                                isAdminLoggedIn = false;
+                                adminEmailDisplay.textContent = "Not logged in";
+                                signOut(auth);
+                                alert("Unauthorized: This email is not authorized for admin access.");
+                                return;
+                            }
                         } else {
                             // Anonymous user or no user
                             isAdminLoggedIn = false;

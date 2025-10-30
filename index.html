@@ -75,8 +75,8 @@
 <body class="h-full flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
 
     <!-- Admin Button -->
-    <button id="admin-button" class="no-print fixed top-6 right-6 bg-gray-700 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-800 transition duration-200 z-50">
-        Admin
+    <button id="admin-button" class="no-print fixed top-6 right-6 bg-gray-700 text-white py-2 px-4 rounded-lg shadow-md hover:bg-gray-800 transition duration-200 z-50" disabled>
+        Loading...
     </button>
 
     <div class="max-w-2xl w-full space-y-8">
@@ -619,6 +619,10 @@
                     // Start listeners and update view
                     listenForTitle();
                     console.log("Firebase initialization complete!");
+                    
+                    // Update admin button to show system is ready
+                    adminButton.textContent = "Admin";
+                    adminButton.disabled = false;
 
                 } catch (error) {
                     console.error("Error initializing Firebase:", error);
@@ -888,6 +892,15 @@
              */
             async function handleLoginFormSubmit(e) {
                 e.preventDefault();
+                
+                // Check if Firebase is initialized
+                if (!auth) {
+                    console.error("Firebase Auth not initialized yet");
+                    adminErrorMessage.textContent = "System not ready. Please wait a moment and try again.";
+                    adminErrorMessage.classList.remove('hidden');
+                    return;
+                }
+                
                 const email = document.getElementById('admin-email').value;
                 const password = document.getElementById('admin-password').value;
                 

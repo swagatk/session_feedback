@@ -912,6 +912,9 @@
                     
                 } catch (error) {
                     console.error("Admin login failed:", error);
+                    console.error("Error code:", error.code);
+                    console.error("Error message:", error.message);
+                    console.error("Attempted email:", email);
                     
                     // Show appropriate error message
                     let errorMessage = "Login failed. Please check your credentials.";
@@ -923,6 +926,8 @@
                         errorMessage = "Invalid email address.";
                     } else if (error.code === 'auth/too-many-requests') {
                         errorMessage = "Too many failed attempts. Please try again later.";
+                    } else if (error.code === 'auth/invalid-credential') {
+                        errorMessage = "Invalid credentials. Please check your email and password.";
                     }
                     
                     adminErrorMessage.textContent = errorMessage;

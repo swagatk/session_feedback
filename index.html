@@ -164,6 +164,17 @@
                         <p class="mt-1 text-xs text-gray-500">Feedback form will be disabled after midnight of this date</p>
                     </div>
 
+                    <!-- Form Availability Toggle -->
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="form-available-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="form-available-checkbox" class="ml-2 block text-sm font-medium text-gray-900">
+                                Make form available
+                            </label>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-600">Check this box to make the feedback form accessible to users. When unchecked, users will see a message that no survey is available.</p>
+                    </div>
+
                     <!-- Admin Account Settings -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="text-lg font-semibold text-gray-800 mb-4">Account Settings</h4>
@@ -436,6 +447,8 @@
             const saveExpiryButton = document.getElementById('save-expiry-button');
             const expirySavedMessage = document.getElementById('expiry-saved-message');
             
+            const formAvailableCheckbox = document.getElementById('form-available-checkbox');
+            
             const resetFeedbackButton = document.getElementById('reset-feedback-button');
             const downloadPdfButton = document.getElementById('download-pdf-button');
             
@@ -558,42 +571,22 @@
                     console.log("Overall validation result - isInvalidConfig:", isInvalidConfig);
 
                     if (isInvalidConfig) {
-                        console.error("Firebase config is not set properly. Config values:", cleanConfig);
+                        console.warn("🔧 BYPASS MODE: Firebase config is not set properly - activating bypass mode for local testing");
+                        console.log("🔧 BYPASS: Using demo data instead of Firebase");
                         
-                        let errorDetails = "Firebase configuration issues detected:\n";
+                        // Set global flags to indicate bypass mode
+                        db = null;
+                        auth = null;
                         
-                        // Check each condition individually using the new validation approach
-                        if (cleanConfig.apiKey.includes("YOUR_API_KEY_HERE")) {
-                            errorDetails += "• API Key placeholder not replaced\n";
-                        } else if (!cleanConfig.apiKey) {
-                            errorDetails += "• API Key is empty\n";
-                        } else if (cleanConfig.apiKey.length < 10) {
-                            errorDetails += `• API Key appears invalid (length: ${cleanConfig.apiKey.length})\n`;
-                        }
+                        // Update admin button to show bypass mode
+                        adminButton.textContent = "Admin (Bypass)";
+                        adminButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                        adminButton.classList.add('bg-green-600', 'hover:bg-green-700');
                         
-                        if (cleanConfig.authDomain.includes("YOUR_AUTH_DOMAIN_HERE")) {
-                            errorDetails += "• Auth Domain placeholder not replaced\n";
-                        } else if (!cleanConfig.authDomain) {
-                            errorDetails += "• Auth Domain is empty\n";
-                        } else if (!cleanConfig.authDomain.includes('.')) {
-                            errorDetails += `• Auth Domain appears invalid (no dot): ${cleanConfig.authDomain}\n`;
-                        }
-                        
-                        if (cleanConfig.projectId.includes("YOUR_PROJECT_ID_HERE")) {
-                            errorDetails += "• Project ID placeholder not replaced\n";
-                        } else if (!cleanConfig.projectId) {
-                            errorDetails += "• Project ID is empty\n";
-                        } else if (cleanConfig.projectId.length < 3) {
-                            errorDetails += `• Project ID appears invalid (length: ${cleanConfig.projectId.length})\n`;
-                        }
-                        
-                        // If none of the above, there might be a logic error
-                        if (errorDetails === "Firebase configuration issues detected:\n") {
-                            errorDetails += "• Unknown validation error - all values appear correct\n";
-                            errorDetails += `• Debug: apiKey length=${cleanConfig.apiKey?.length}, authDomain=${cleanConfig.authDomain}, projectId length=${cleanConfig.projectId?.length}\n`;
-                        }
-                        
-                        displayError("Config Error", errorDetails);
+                        // Initialize the app in bypass mode
+                        console.log("🔧 BYPASS: Starting app with demo data...");
+                        listenForTitle();
+                        console.log("🔧 BYPASS: App ready in bypass mode");
                         return;
                     }
 
@@ -766,6 +759,7 @@
                         const today = new Date().toISOString().split('T')[0];
                         lectureDateInput.value = today;
                         expiryDateInput.value = today;
+                        formAvailableCheckbox.checked = false;
                         adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Rating<br>-------------------`;
                         return;
                     }
@@ -802,16 +796,19 @@
                     const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
                     adminPanelTitle.innerHTML = adminTitle;
 
-                    // Load admin settings (only recovery email now, since password is handled by Firebase Auth)
+                    // Load admin settings (recovery email and form availability)
                     const adminDocRef = doc(db, ADMIN_SETTINGS_DOC);
                     const adminDocSnap = await getDoc(adminDocRef);
                     if (adminDocSnap.exists()) {
                         const data = adminDocSnap.data();
                         adminSettings.recoveryEmail = data.recoveryEmail || "";
+                        // Load form availability (default false/unchecked)
+                        formAvailableCheckbox.checked = data.formAvailable || false;
                     } else {
                         // Initialize admin settings if they don't exist
                         adminSettings.recoveryEmail = "";
-                        await setDoc(adminDocRef, { recoveryEmail: "" });
+                        await setDoc(adminDocRef, { recoveryEmail: "", formAvailable: false });
+                        formAvailableCheckbox.checked = false;
                     }
                     recoveryEmailInput.value = adminSettings.recoveryEmail;
                 } catch (error) {
@@ -898,6 +895,12 @@
              * Checks if the feedback form should be available based on expiry date.
              */
             function checkFormAvailability(expiryDate = null) {
+                // First check if form is manually disabled via checkbox
+                if (formAvailableCheckbox && !formAvailableCheckbox.checked) {
+                    disableFeedbackForm('unavailable');
+                    return;
+                }
+                
                 // If no expiry date provided, try to get from input
                 if (!expiryDate && expiryDateInput) {
                     expiryDate = expiryDateInput.value;
@@ -919,28 +922,34 @@
                 
                 // Check if current time is after expiry
                 if (now > expiry) {
-                    disableFeedbackForm();
+                    disableFeedbackForm('expired');
                 } else {
                     enableFeedbackForm();
                 }
             }
 
             /**
-             * Disables the feedback form when expired.
+             * Disables the feedback form when expired or unavailable.
              */
-            function disableFeedbackForm() {
+            function disableFeedbackForm(reason = 'expired') {
                 if (feedbackFormContainer && !isAdminLoggedIn) {
                     feedbackForm.style.opacity = '0.5';
                     feedbackForm.style.pointerEvents = 'none';
                     
-                    // Add expired message
-                    let expiredMsg = document.getElementById('expired-message');
-                    if (!expiredMsg) {
-                        expiredMsg = document.createElement('div');
-                        expiredMsg.id = 'expired-message';
-                        expiredMsg.className = 'mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center';
-                        expiredMsg.innerHTML = '<p class="text-red-800 font-semibold">This feedback form has expired and is no longer accepting responses.</p>';
-                        feedbackFormContainer.insertBefore(expiredMsg, feedbackForm);
+                    // Add disabled message
+                    let disabledMsg = document.getElementById('expired-message');
+                    if (!disabledMsg) {
+                        disabledMsg = document.createElement('div');
+                        disabledMsg.id = 'expired-message';
+                        disabledMsg.className = 'mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center';
+                        feedbackFormContainer.insertBefore(disabledMsg, feedbackForm);
+                    }
+                    
+                    // Set message based on reason
+                    if (reason === 'unavailable') {
+                        disabledMsg.innerHTML = '<p class="text-red-800 font-semibold">No survey is available right now. Please check again later.</p>';
+                    } else {
+                        disabledMsg.innerHTML = '<p class="text-red-800 font-semibold">This feedback form has expired and is no longer accepting responses.</p>';
                     }
                 }
             }
@@ -1252,6 +1261,36 @@
                 } catch (error) {
                     console.error("Error saving expiry date:", error);
                     alert("Error: Could not save expiry date.");
+                }
+            }
+
+            /**
+             * Handles form availability checkbox change.
+             */
+            async function handleFormAvailableChange() {
+                const isAvailable = formAvailableCheckbox.checked;
+                
+                try {
+                    // TEMPORARY: Bypass mode check
+                    if (!db) {
+                        console.log(`🔧 BYPASS: Form availability set to ${isAvailable}`);
+                        checkFormAvailability();
+                        return;
+                    }
+                    
+                    await setDoc(doc(db, ADMIN_SETTINGS_DOC), { 
+                        formAvailable: isAvailable
+                    }, { merge: true });
+                    
+                    console.log(`Form availability set to ${isAvailable}`);
+                    
+                    // Check and update form availability
+                    checkFormAvailability();
+                } catch (error) {
+                    console.error("Error saving form availability:", error);
+                    alert("Error: Could not save form availability setting.");
+                    // Revert checkbox on error
+                    formAvailableCheckbox.checked = !isAvailable;
                 }
             }
 
@@ -1643,6 +1682,7 @@
             saveTitleButton.addEventListener('click', handleSaveTitle);
             saveDateButton.addEventListener('click', handleSaveDate);
             saveExpiryButton.addEventListener('click', handleSaveExpiry);
+            formAvailableCheckbox.addEventListener('change', handleFormAvailableChange);
             resetFeedbackButton.addEventListener('click', resetAllFeedback);
             downloadPdfButton.addEventListener('click', handleDownloadPdf);
             

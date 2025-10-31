@@ -380,7 +380,8 @@
             setDoc, 
             onSnapshot, 
             collection, 
-            query, 
+            query,
+            where,
             getDocs,
             deleteDoc,
             Timestamp 
@@ -735,6 +736,40 @@
             /**
              * Shows or hides UI elements based on admin login status.
              */
+            /**
+             * Checks if the current user has already submitted feedback.
+             */
+            async function hasUserSubmitted() {
+                // First check localStorage for quick response
+                if (localStorage.getItem(SUBMITTED_KEY)) {
+                    return true;
+                }
+                
+                // Then check Firestore to handle cases where localStorage was cleared
+                if (!currentUser || !db) {
+                    return false;
+                }
+                
+                try {
+                    const q = query(
+                        collection(db, FEEDBACK_COLLECTION),
+                        where('userId', '==', currentUser.uid)
+                    );
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (!querySnapshot.empty) {
+                        // User has submitted before, update localStorage
+                        localStorage.setItem(SUBMITTED_KEY, 'true');
+                        return true;
+                    }
+                    return false;
+                } catch (error) {
+                    console.error("Error checking if user submitted:", error);
+                    // On error, fall back to localStorage only
+                    return localStorage.getItem(SUBMITTED_KEY) !== null;
+                }
+            }
+
             function updateView() {
                 if (!db) return; // Don't do anything if DB isn't ready
 
@@ -754,14 +789,17 @@
                         feedbackListener = null;
                     }
 
-                    // Check if user has already submitted (from localStorage)
-                    if (localStorage.getItem(SUBMITTED_KEY)) {
-                        feedbackFormContainer.classList.add('hidden');
-                        successMessage.classList.remove('hidden');
-                    } else {
-                        feedbackFormContainer.classList.remove('hidden');
-                        successMessage.classList.add('hidden');
-                    }
+                    // Check if user has already submitted (from localStorage or Firestore)
+                    hasUserSubmitted().then(submitted => {
+                        if (submitted) {
+                            feedbackFormContainer.classList.add('hidden');
+                            successMessage.classList.remove('hidden');
+                        } else {
+                            feedbackFormContainer.classList.remove('hidden');
+                            successMessage.classList.add('hidden');
+                        }
+                    });
+                    
                     adminPanel.classList.add('hidden');
                     adminButton.classList.remove('hidden');
                 }
@@ -1058,7 +1096,8 @@
                                 positive: formData.get('positive-comments'),
                                 negative: formData.get('negative-comments'),
                                 average: (clarity + engagement + pace) / 3,
-                                timestamp: Timestamp.now()
+                                timestamp: Timestamp.now(),
+                                userId: currentUser ? currentUser.uid : null // Track anonymous user
                             };
 
                             // Add to Firestore

@@ -151,6 +151,19 @@
                         <p id="date-saved-message" class="mt-2 text-sm text-green-600 hidden">Date saved!</p>
                     </div>
 
+                    <!-- Set Expiry Date -->
+                    <div>
+                        <label for="expiry-date-input" class="block text-sm font-medium text-gray-700">Expiry Date</label>
+                        <div class="mt-1 flex rounded-md shadow-sm">
+                            <input type="date" id="expiry-date-input" class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            <button id="save-expiry-button" class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                                Save
+                            </button>
+                        </div>
+                        <p id="expiry-saved-message" class="mt-2 text-sm text-green-600 hidden">Expiry date saved!</p>
+                        <p class="mt-1 text-xs text-gray-500">Feedback form will be disabled after midnight of this date</p>
+                    </div>
+
                     <!-- Admin Account Settings -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="text-lg font-semibold text-gray-800 mb-4">Account Settings</h4>
@@ -418,6 +431,10 @@
             const lectureDateInput = document.getElementById('lecture-date-input');
             const saveDateButton = document.getElementById('save-date-button');
             const dateSavedMessage = document.getElementById('date-saved-message');
+            
+            const expiryDateInput = document.getElementById('expiry-date-input');
+            const saveExpiryButton = document.getElementById('save-expiry-button');
+            const expirySavedMessage = document.getElementById('expiry-saved-message');
             
             const resetFeedbackButton = document.getElementById('reset-feedback-button');
             const downloadPdfButton = document.getElementById('download-pdf-button');
@@ -748,6 +765,7 @@
                         moduleCodeInput.value = "CS101";
                         const today = new Date().toISOString().split('T')[0];
                         lectureDateInput.value = today;
+                        expiryDateInput.value = today;
                         adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Lecture Rating`;
                         return;
                     }
@@ -757,10 +775,12 @@
                     const titleDocSnap = await getDoc(titleDocRef);
                     let moduleCode = "";
                     let lectureDate = "";
+                    let expiryDate = "";
                     if (titleDocSnap.exists()) {
                         const data = titleDocSnap.data();
                         moduleCode = data.moduleCode || "";
                         lectureDate = data.lectureDate || "";
+                        expiryDate = data.expiryDate || "";
                     }
                     
                     // Set module code
@@ -771,6 +791,12 @@
                         lectureDate = new Date().toISOString().split('T')[0];
                     }
                     lectureDateInput.value = lectureDate;
+                    
+                    // Set expiry date - default to today if not set
+                    if (!expiryDate) {
+                        expiryDate = new Date().toISOString().split('T')[0];
+                    }
+                    expiryDateInput.value = expiryDate;
                     
                     // Update admin panel title
                     const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
@@ -840,10 +866,12 @@
                 titleListener = onSnapshot(doc(db, SETTINGS_DOC), (docSnap) => {
                     let moduleCode = "";
                     let lectureDate = "";
+                    let expiryDate = "";
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         moduleCode = data.moduleCode || "";
                         lectureDate = data.lectureDate || "";
+                        expiryDate = data.expiryDate || "";
                     }
                     
                     // Format title with module code and date
@@ -854,11 +882,81 @@
                     } else {
                         formTitle.textContent = "Submit your feedback";
                     }
+                    
+                    // Check if form should be available based on expiry date
+                    checkFormAvailability(expiryDate);
                 }, (error) => {
                     console.error("Error listening for title:", error);
                     // Don't show a fatal error, just use the default title
                     formTitle.textContent = "Submit your feedback";
                 });
+            }
+
+            /**
+             * Checks if the feedback form should be available based on expiry date.
+             */
+            function checkFormAvailability(expiryDate = null) {
+                // If no expiry date provided, try to get from input
+                if (!expiryDate && expiryDateInput) {
+                    expiryDate = expiryDateInput.value;
+                }
+                
+                // If still no expiry date, form is available
+                if (!expiryDate) {
+                    enableFeedbackForm();
+                    return;
+                }
+                
+                // Get current date at midnight (local time)
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                
+                // Get expiry date at midnight
+                const expiry = new Date(expiryDate + 'T00:00:00');
+                expiry.setHours(23, 59, 59, 999); // End of expiry day
+                
+                // Check if current time is after expiry
+                if (now > expiry) {
+                    disableFeedbackForm();
+                } else {
+                    enableFeedbackForm();
+                }
+            }
+
+            /**
+             * Disables the feedback form when expired.
+             */
+            function disableFeedbackForm() {
+                if (feedbackFormContainer && !isAdminLoggedIn) {
+                    feedbackForm.style.opacity = '0.5';
+                    feedbackForm.style.pointerEvents = 'none';
+                    
+                    // Add expired message
+                    let expiredMsg = document.getElementById('expired-message');
+                    if (!expiredMsg) {
+                        expiredMsg = document.createElement('div');
+                        expiredMsg.id = 'expired-message';
+                        expiredMsg.className = 'mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center';
+                        expiredMsg.innerHTML = '<p class="text-red-800 font-semibold">This feedback form has expired and is no longer accepting responses.</p>';
+                        feedbackFormContainer.insertBefore(expiredMsg, feedbackForm);
+                    }
+                }
+            }
+
+            /**
+             * Enables the feedback form when not expired.
+             */
+            function enableFeedbackForm() {
+                if (feedbackForm) {
+                    feedbackForm.style.opacity = '1';
+                    feedbackForm.style.pointerEvents = 'auto';
+                    
+                    // Remove expired message if it exists
+                    const expiredMsg = document.getElementById('expired-message');
+                    if (expiredMsg) {
+                        expiredMsg.remove();
+                    }
+                }
             }            /**
              * Calculates and displays the overall average rating.
              */
@@ -1127,6 +1225,31 @@
                 } catch (error) {
                     console.error("Error saving date:", error);
                     alert("Error: Could not save date.");
+                }
+            }
+
+            /**
+             * Saves the expiry date to Firestore.
+             */
+            async function handleSaveExpiry() {
+                const newExpiryDate = expiryDateInput.value;
+                
+                try {
+                    await setDoc(doc(db, SETTINGS_DOC), { 
+                        expiryDate: newExpiryDate
+                    }, { merge: true });
+
+                    // Show saved message
+                    expirySavedMessage.classList.remove('hidden');
+                    setTimeout(() => {
+                        expirySavedMessage.classList.add('hidden');
+                    }, 2000);
+                    
+                    // Check and update form availability
+                    checkFormAvailability();
+                } catch (error) {
+                    console.error("Error saving expiry date:", error);
+                    alert("Error: Could not save expiry date.");
                 }
             }
 
@@ -1517,6 +1640,7 @@
             
             saveTitleButton.addEventListener('click', handleSaveTitle);
             saveDateButton.addEventListener('click', handleSaveDate);
+            saveExpiryButton.addEventListener('click', handleSaveExpiry);
             resetFeedbackButton.addEventListener('click', resetAllFeedback);
             downloadPdfButton.addEventListener('click', handleDownloadPdf);
             

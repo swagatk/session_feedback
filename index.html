@@ -748,7 +748,7 @@
                         moduleCodeInput.value = "CS101";
                         const today = new Date().toISOString().split('T')[0];
                         lectureDateInput.value = today;
-                        adminPanelTitle.textContent = `CS101:${today}\nOverall Lecture Rating`;
+                        adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Lecture Rating`;
                         return;
                     }
                     
@@ -773,8 +773,8 @@
                     lectureDateInput.value = lectureDate;
                     
                     // Update admin panel title
-                    const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}\nOverall Lecture Rating` : "Overall Lecture Rating";
-                    adminPanelTitle.textContent = adminTitle;
+                    const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    adminPanelTitle.innerHTML = adminTitle;
 
                     // Load admin settings (only recovery email now, since password is handled by Firebase Auth)
                     const adminDocRef = doc(db, ADMIN_SETTINGS_DOC);
@@ -848,9 +848,9 @@
                     
                     // Format title with module code and date
                     if (moduleCode && lectureDate) {
-                        formTitle.textContent = `${moduleCode}:${lectureDate}\nSubmit your feedback`;
+                        formTitle.innerHTML = `${moduleCode}:${lectureDate}<br>Submit your feedback`;
                     } else if (moduleCode) {
-                        formTitle.textContent = `${moduleCode}\nSubmit your feedback`;
+                        formTitle.innerHTML = `${moduleCode}<br>Submit your feedback`;
                     } else {
                         formTitle.textContent = "Submit your feedback";
                     }
@@ -1088,8 +1088,8 @@
                     }, { merge: true });
                     
                     // Update admin panel title immediately
-                    const adminTitle = newTitle ? `${newTitle}:${currentDate}\nOverall Lecture Rating` : "Overall Lecture Rating";
-                    adminPanelTitle.textContent = adminTitle;
+                    const adminTitle = newTitle ? `${newTitle}:${currentDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    adminPanelTitle.innerHTML = adminTitle;
 
                     // Show saved message
                     titleSavedMessage.classList.remove('hidden');
@@ -1116,8 +1116,8 @@
                     }, { merge: true });
                     
                     // Update admin panel title immediately
-                    const adminTitle = currentModuleCode ? `${currentModuleCode}:${newDate}\nOverall Lecture Rating` : "Overall Lecture Rating";
-                    adminPanelTitle.textContent = adminTitle;
+                    const adminTitle = currentModuleCode ? `${currentModuleCode}:${newDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    adminPanelTitle.innerHTML = adminTitle;
 
                     // Show saved message
                     dateSavedMessage.classList.remove('hidden');

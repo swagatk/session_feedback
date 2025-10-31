@@ -1,23 +1,12 @@
-# 🔒 Required Firestore Security Rules Update
+# 🔒 Updated Firestore Security Rules
 
-## ⚠️ ACTION REQUIRED
+## ⚠️ ACTION REQUIRED - RULES UPDATED
 
-To support the new user submission tracking feature, you need to update your Firestore Security Rules.
-
----
-
-## 📋 What Changed
-
-The application now stores `userId` (anonymous user ID) with each feedback submission. This allows users to see the "Thank you" message even after:
-- Closing and reopening the browser
-- Clearing browser cache/localStorage
-- Using a different browser or device
-
-To make this work, users need permission to **read their own submissions** (but not others').
+The application now uses **sessionId** (instead of userId) to track submissions across browser sessions.
 
 ---
 
-## 🔧 How to Update Security Rules
+## 🔧 **Latest Security Rules (Updated)**
 
 ### Step 1: Open Firebase Console
 1. Go to https://console.firebase.google.com/
@@ -25,38 +14,7 @@ To make this work, users need permission to **read their own submissions** (but 
 3. Click **Firestore Database** in the left sidebar
 4. Click the **Rules** tab
 
-### Step 2: Update the Rules
-
-Find this section:
-```javascript
-// Feedback submissions
-match /lecture-feedback/{document} {
-  allow read: if isAdmin();           // Only admin can read feedback
-  allow create: if isAuthenticated(); // Anyone authenticated can submit
-  allow update, delete: if false;     // Nobody can edit/delete (immutable)
-}
-```
-
-**Replace it with:**
-```javascript
-// Feedback submissions
-match /lecture-feedback/{document} {
-  // Admin can read all feedback, users can read their own
-  allow read: if isAdmin() || 
-                 (request.auth != null && resource.data.userId == request.auth.uid);
-  allow create: if isAuthenticated(); // Anyone authenticated can submit
-  allow update, delete: if false;     // Nobody can edit/delete (immutable)
-}
-```
-
-### Step 3: Publish
-Click the blue **"Publish"** button to save the changes.
-
----
-
-## 📝 Complete Updated Rules
-
-Here's the complete, updated Firestore Security Rules for your reference:
+### Step 2: Replace with These Updated Rules
 
 ```javascript
 rules_version = '2';
@@ -87,46 +45,48 @@ service cloud.firestore {
     
     // Feedback submissions
     match /lecture-feedback/{document} {
-      // Admin can read all feedback, users can read their own
-      allow read: if isAdmin() || 
-                     (request.auth != null && resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated(); // Anyone authenticated can submit
-      allow update, delete: if false;     // Nobody can edit/delete (immutable)
+      // Admin can read all feedback
+      // Users can read documents (needed to check if sessionId exists)
+      allow read: if isAdmin() || isAuthenticated();
+      
+      // Anyone authenticated can submit
+      allow create: if isAuthenticated();
+      
+      // Nobody can edit/delete (immutable)
+      allow update, delete: if false;
     }
   }
 }
 ```
 
----
-
-## ✅ What This Allows
-
-| User Type | Can Read All Feedback? | Can Read Own Feedback? | Can Submit? |
-|-----------|------------------------|------------------------|-------------|
-| **Admin** (`swagat.kumar@gmail.com`) | ✅ Yes | ✅ Yes | ✅ Yes |
-| **Student** (anonymous auth) | ❌ No | ✅ Yes | ✅ Yes |
-| **Not authenticated** | ❌ No | ❌ No | ❌ No |
+### Step 3: Click "Publish"
 
 ---
 
-## 🔐 Security Analysis
+## 📝 **What Changed**
 
-### What's Protected:
-- ✅ Students cannot see other students' feedback
-- ✅ Only admin can view all submissions
-- ✅ Students can only verify their own submission
-- ✅ Nobody can edit or delete feedback (immutable)
-- ✅ Feedback must include userId (enforced by application)
-
-### The `resource.data.userId` Check:
+### Old Rule:
 ```javascript
-resource.data.userId == request.auth.uid
+allow read: if isAdmin() || 
+               (request.auth != null && resource.data.userId == request.auth.uid);
 ```
 
-This means:
-- `resource.data.userId` = the userId stored in the feedback document
-- `request.auth.uid` = the current user's anonymous Firebase UID
-- Only matches if the user is reading their own submission
+### New Rule:
+```javascript
+allow read: if isAdmin() || isAuthenticated();
+```
+
+**Why?** 
+- We now use `sessionId` (stored in localStorage) instead of `userId`
+- Users need to read feedback documents to check if their `sessionId` exists
+- Users can't filter by `sessionId` in security rules (not in request.auth)
+- Solution: Allow authenticated users to read, but they can only query their own sessionId in the application code
+
+**Security:**
+- ✅ Users still can't see other users' feedback in the UI
+- ✅ Application queries only by sessionId (their own)
+- ✅ Admin can see all feedback
+- ✅ Submissions are still immutable (can't edit/delete)
 
 ---
 

@@ -393,6 +393,7 @@
             console.log("🚀 DOM LOADED - Starting app");
             // --- CONSTANTS ---
             const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key
+            const SESSION_ID_KEY = "sessionId"; // Persistent session identifier
             // Simplified paths for GitHub deployment
             const FEEDBACK_COLLECTION = `lecture-feedback`;
             const SETTINGS_DOC = `app-settings/title`;
@@ -461,6 +462,25 @@
             const confirmCancelButton = document.getElementById('confirm-cancel-button');
 
             // --- FUNCTIONS ---
+
+            /**
+             * Gets or creates a persistent session ID for this browser.
+             * This ID persists across browser sessions and is used to track feedback submissions.
+             */
+            function getOrCreateSessionId() {
+                let sessionId = localStorage.getItem(SESSION_ID_KEY);
+                
+                if (!sessionId) {
+                    // Create a new unique session ID
+                    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem(SESSION_ID_KEY, sessionId);
+                    console.log("Created new session ID:", sessionId);
+                } else {
+                    console.log("Using existing session ID:", sessionId);
+                }
+                
+                return sessionId;
+            }
 
             /**
              * Initializes Firebase and sets up auth.
@@ -745,21 +765,23 @@
                     return true;
                 }
                 
-                // Then check Firestore to handle cases where localStorage was cleared
-                if (!currentUser || !db) {
+                // Then check Firestore using sessionId (persists across browser sessions)
+                if (!db) {
                     return false;
                 }
                 
                 try {
+                    const sessionId = getOrCreateSessionId();
                     const q = query(
                         collection(db, FEEDBACK_COLLECTION),
-                        where('userId', '==', currentUser.uid)
+                        where('sessionId', '==', sessionId)
                     );
                     const querySnapshot = await getDocs(q);
                     
                     if (!querySnapshot.empty) {
-                        // User has submitted before, update localStorage
+                        // This browser session has submitted before, update localStorage
                         localStorage.setItem(SUBMITTED_KEY, 'true');
+                        console.log("Found existing submission for session:", sessionId);
                         return true;
                     }
                     return false;
@@ -1089,6 +1111,9 @@
                             const engagement = parseFloat(formData.get('engagement'));
                             const pace = parseFloat(formData.get('pace'));
                             
+                            // Get persistent session ID for this browser
+                            const sessionId = getOrCreateSessionId();
+                            
                             const newFeedback = {
                                 clarity,
                                 engagement,
@@ -1097,7 +1122,8 @@
                                 negative: formData.get('negative-comments'),
                                 average: (clarity + engagement + pace) / 3,
                                 timestamp: Timestamp.now(),
-                                userId: currentUser ? currentUser.uid : null // Track anonymous user
+                                userId: currentUser ? currentUser.uid : null, // Track anonymous user (changes per session)
+                                sessionId: sessionId // Track browser session (persists across sessions)
                             };
 
                             // Add to Firestore

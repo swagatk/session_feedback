@@ -766,7 +766,7 @@
                         const today = new Date().toISOString().split('T')[0];
                         lectureDateInput.value = today;
                         expiryDateInput.value = today;
-                        adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Lecture Rating`;
+                        adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Rating<br>-------------------`;
                         return;
                     }
                     
@@ -799,7 +799,7 @@
                     expiryDateInput.value = expiryDate;
                     
                     // Update admin panel title
-                    const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
                     adminPanelTitle.innerHTML = adminTitle;
 
                     // Load admin settings (only recovery email now, since password is handled by Firebase Auth)
@@ -1186,7 +1186,7 @@
                     }, { merge: true });
                     
                     // Update admin panel title immediately
-                    const adminTitle = newTitle ? `${newTitle}:${currentDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    const adminTitle = newTitle ? `${newTitle}:${currentDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
                     adminPanelTitle.innerHTML = adminTitle;
 
                     // Show saved message
@@ -1214,7 +1214,7 @@
                     }, { merge: true });
                     
                     // Update admin panel title immediately
-                    const adminTitle = currentModuleCode ? `${currentModuleCode}:${newDate}<br>Overall Lecture Rating` : "Overall Lecture Rating";
+                    const adminTitle = currentModuleCode ? `${currentModuleCode}:${newDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
                     adminPanelTitle.innerHTML = adminTitle;
 
                     // Show saved message

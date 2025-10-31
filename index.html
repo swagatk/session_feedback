@@ -322,6 +322,8 @@
 
     <!-- Firebase SDK -->
     <script type="module">
+        console.log("🔴 SCRIPT LOADING");
+        
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { 
             getAuth, 
@@ -347,8 +349,11 @@
             deleteDoc,
             Timestamp 
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        console.log("✅ All Firebase modules imported");
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("🚀 DOM LOADED - Starting app");
             // --- CONSTANTS ---
             const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key
             // Simplified paths for GitHub deployment
@@ -1460,31 +1465,22 @@
             });
 
             // --- INITIALIZATION ---
-            initializeFirebase(); // Start the app
             
-            // TEMPORARY: Bypass Firebase auth for testing
-            console.log("🔧 TEMPORARY: Bypassing Firebase auth for testing");
-            setTimeout(() => {
-                isAdminLoggedIn = true;
-                adminButton.textContent = "Admin (Bypass)";
-                adminButton.disabled = false;
-                adminButton.classList.add('bg-green-600', 'hover:bg-green-700');
-                adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
-                adminEmailDisplay.textContent = "swagat.kumar@gmail.com (bypass mode)";
-                updateView();
-                console.log("🔧 Admin bypass activated - you can now access admin panel");
-            }, 2000); // Give Firebase 2 seconds, then bypass
+            // TEMPORARY: Bypass Firebase auth for testing - IMMEDIATE
+            console.log("🔧 TEMPORARY: Immediate Firebase bypass mode");
+            isAdminLoggedIn = true;
+            adminButton.textContent = "Admin (Bypass)";
+            adminButton.disabled = false;
+            adminButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
+            adminEmailDisplay.textContent = "swagat.kumar@gmail.com (bypass mode)";
+            updateView();
+            console.log("🔧 Admin bypass activated immediately");
             
-            // Fallback timeout in case Firebase initialization hangs
-            setTimeout(() => {
-                if (adminButton.textContent === "Loading...") {
-                    console.warn("Firebase initialization timeout - enabling admin button manually");
-                    adminButton.textContent = "Admin (Timeout)";
-                    adminButton.disabled = false;
-                    adminButton.classList.add('bg-orange-600', 'hover:bg-orange-700');
-                    adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
-                }
-            }, 10000); // 10 second timeout
+            // Try to initialize Firebase in background (non-blocking)
+            initializeFirebase().catch(err => {
+                console.warn("Firebase initialization failed (expected in bypass mode):", err);
+            });
         });
     </script>
 </body>

@@ -858,7 +858,7 @@
             function listenForTitle() {
                 if (titleListener) titleListener(); // Unsubscribe from old listener
 
-                titleListener = onSnapshot(doc(db, SETTINGS_DOC), (docSnap) => {
+                titleListener = onSnapshot(doc(db, SETTINGS_DOC), async (docSnap) => {
                     let moduleCode = "";
                     let lectureDate = "";
                     let expiryDate = "";
@@ -878,8 +878,19 @@
                         formTitle.textContent = "Submit your feedback";
                     }
                     
-                    // Check if form should be available based on expiry date
-                    checkFormAvailability(expiryDate);
+                    // Load form availability setting from Firestore
+                    let formAvailable = true; // Default to available
+                    try {
+                        const adminDocSnap = await getDoc(doc(db, ADMIN_SETTINGS_DOC));
+                        if (adminDocSnap.exists()) {
+                            formAvailable = adminDocSnap.data().formAvailable || false;
+                        }
+                    } catch (error) {
+                        console.error("Error loading form availability:", error);
+                    }
+                    
+                    // Check if form should be available
+                    checkFormAvailability(expiryDate, formAvailable);
                 }, (error) => {
                     console.error("Error listening for title:", error);
                     // Don't show a fatal error, just use the default title
@@ -888,11 +899,17 @@
             }
 
             /**
-             * Checks if the feedback form should be available based on expiry date.
+             * Checks if the feedback form should be available based on form availability setting and expiry date.
              */
-            function checkFormAvailability(expiryDate = null) {
-                // First check if form is manually disabled via checkbox
-                if (formAvailableCheckbox && !formAvailableCheckbox.checked) {
+            function checkFormAvailability(expiryDate = null, formAvailable = true) {
+                // Don't show "unavailable" message if user has already submitted
+                // They should continue seeing the success message
+                if (localStorage.getItem(SUBMITTED_KEY)) {
+                    return;
+                }
+                
+                // First check if form is manually disabled via setting
+                if (!formAvailable) {
                     disableFeedbackForm('unavailable');
                     return;
                 }
@@ -1227,8 +1244,9 @@
                         expirySavedMessage.classList.add('hidden');
                     }, 2000);
                     
-                    // Check and update form availability
-                    checkFormAvailability();
+                    // Check and update form availability (admin won't be affected by this)
+                    const formAvailable = formAvailableCheckbox.checked;
+                    checkFormAvailability(newExpiryDate, formAvailable);
                 } catch (error) {
                     console.error("Error saving expiry date:", error);
                     alert("Error: Could not save expiry date.");
@@ -1248,8 +1266,9 @@
                     
                     console.log(`Form availability set to ${isAvailable}`);
                     
-                    // Check and update form availability
-                    checkFormAvailability();
+                    // Check and update form availability (admin won't be affected by this)
+                    const expiryDate = expiryDateInput.value;
+                    checkFormAvailability(expiryDate, isAvailable);
                 } catch (error) {
                     console.error("Error saving form availability:", error);
                     alert("Error: Could not save form availability setting.");

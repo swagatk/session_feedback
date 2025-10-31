@@ -572,22 +572,42 @@
                     console.log("Overall validation result - isInvalidConfig:", isInvalidConfig);
 
                     if (isInvalidConfig) {
-                        console.warn("🔧 BYPASS MODE: Firebase config is not set properly - activating bypass mode for local testing");
-                        console.log("🔧 BYPASS: Using demo data instead of Firebase");
+                        console.error("Firebase config is not set properly. Config values:", cleanConfig);
                         
-                        // Set global flags to indicate bypass mode
-                        db = null;
-                        auth = null;
+                        let errorDetails = "Firebase configuration issues detected:\n";
                         
-                        // Update admin button to show bypass mode
-                        adminButton.textContent = "Admin (Bypass)";
-                        adminButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                        adminButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                        // Check each condition individually using the new validation approach
+                        if (cleanConfig.apiKey.includes("YOUR_API_KEY_HERE")) {
+                            errorDetails += "• API Key placeholder not replaced\n";
+                        } else if (!cleanConfig.apiKey) {
+                            errorDetails += "• API Key is empty\n";
+                        } else if (cleanConfig.apiKey.length < 10) {
+                            errorDetails += `• API Key appears invalid (length: ${cleanConfig.apiKey.length})\n`;
+                        }
                         
-                        // Initialize the app in bypass mode
-                        console.log("🔧 BYPASS: Starting app with demo data...");
-                        listenForTitle();
-                        console.log("🔧 BYPASS: App ready in bypass mode");
+                        if (cleanConfig.authDomain.includes("YOUR_AUTH_DOMAIN_HERE")) {
+                            errorDetails += "• Auth Domain placeholder not replaced\n";
+                        } else if (!cleanConfig.authDomain) {
+                            errorDetails += "• Auth Domain is empty\n";
+                        } else if (!cleanConfig.authDomain.includes('.')) {
+                            errorDetails += `• Auth Domain appears invalid (no dot): ${cleanConfig.authDomain}\n`;
+                        }
+                        
+                        if (cleanConfig.projectId.includes("YOUR_PROJECT_ID_HERE")) {
+                            errorDetails += "• Project ID placeholder not replaced\n";
+                        } else if (!cleanConfig.projectId) {
+                            errorDetails += "• Project ID is empty\n";
+                        } else if (cleanConfig.projectId.length < 3) {
+                            errorDetails += `• Project ID appears invalid (length: ${cleanConfig.projectId.length})\n`;
+                        }
+                        
+                        // If none of the above, there might be a logic error
+                        if (errorDetails === "Firebase configuration issues detected:\n") {
+                            errorDetails += "• Unknown validation error - all values appear correct\n";
+                            errorDetails += `• Debug: apiKey length=${cleanConfig.apiKey?.length}, authDomain=${cleanConfig.authDomain}, projectId length=${cleanConfig.projectId?.length}\n`;
+                        }
+                        
+                        displayError("Config Error", errorDetails);
                         return;
                     }
 
@@ -753,18 +773,6 @@
              */
             async function loadAdminPanelData() {
                 try {
-                    // TEMPORARY: Bypass mode check
-                    if (!db) {
-                        console.log("🔧 BYPASS: Firebase not available, using demo data");
-                        moduleCodeInput.value = "CS101";
-                        const today = new Date().toISOString().split('T')[0];
-                        lectureDateInput.value = today;
-                        expiryDateInput.value = today;
-                        formAvailableCheckbox.checked = false;
-                        adminPanelTitle.innerHTML = `CS101:${today}<br>Overall Rating<br>-------------------`;
-                        return;
-                    }
-                    
                     // Load module code and date
                     const titleDocRef = doc(db, SETTINGS_DOC);
                     const titleDocSnap = await getDoc(titleDocRef);
@@ -814,12 +822,12 @@
                     recoveryEmailInput.value = adminSettings.recoveryEmail;
                 } catch (error) {
                     console.error("Error loading admin panel data:", error);
-                    console.log("🔧 BYPASS: Using fallback demo data due to error");
+                    // Set default values on error
                     const today = new Date().toISOString().split('T')[0];
-                    moduleCodeInput.value = "DEMO";
+                    moduleCodeInput.value = "";
                     lectureDateInput.value = today;
                     expiryDateInput.value = today;
-                    adminPanelTitle.innerHTML = `DEMO:${today}<br>Overall Rating<br>-------------------`;
+                    adminPanelTitle.innerHTML = `Overall Rating<br>-------------------`;
                 }
             }
 
@@ -827,19 +835,6 @@
              * Listens for feedback data from Firestore and updates the admin panel.
              */
             function listenForFeedback() {
-                // TEMPORARY: Bypass mode check
-                if (!db) {
-                    console.log("🔧 BYPASS: Firebase not available, using demo feedback data");
-                    const demoFeedback = [
-                        { rating: 4, feedback: "Great lecture! Very informative.", timestamp: { seconds: Date.now() / 1000 } },
-                        { rating: 5, feedback: "Excellent explanation of concepts.", timestamp: { seconds: Date.now() / 1000 } },
-                        { rating: 3, feedback: "Could be improved with more examples.", timestamp: { seconds: Date.now() / 1000 } }
-                    ];
-                    calculateOverallRating(demoFeedback);
-                    renderFeedbackTable(demoFeedback);
-                    return;
-                }
-                
                 if (feedbackListener) feedbackListener(); // Unsubscribe from old listener
 
                 const q = query(collection(db, FEEDBACK_COLLECTION));
@@ -1074,34 +1069,9 @@
             async function handleLoginFormSubmit(e) {
                 e.preventDefault();
                 
-                // TEMPORARY: Bypass Firebase auth check
-                console.log("🔧 BYPASS: Skipping Firebase auth, using direct admin access");
-                
                 const email = document.getElementById('admin-email').value;
                 const password = document.getElementById('admin-password').value;
                 
-                // Simple validation for bypass mode
-                if (email === 'swagat.kumar@gmail.com' && password) {
-                    console.log("🔧 BYPASS: Admin login successful");
-                    isAdminLoggedIn = true;
-                    adminEmailDisplay.textContent = email + " (bypass mode)";
-                    adminLoginForm.reset();
-                    adminLoginModal.classList.add('hidden');
-                    adminErrorMessage.classList.add('hidden');
-                    updateView();
-                    
-                    // Load admin data without Firebase auth
-                    await loadAdminPanelData();
-                    listenForFeedback();
-                    return;
-                }
-                
-                // Show error for wrong credentials in bypass mode
-                adminErrorMessage.textContent = "Bypass mode: Use email 'swagat.kumar@gmail.com' with any password";
-                adminErrorMessage.classList.remove('hidden');
-                return;
-                
-                // ORIGINAL CODE (commented out for bypass):
                 // Check if Firebase is initialized
                 if (!auth) {
                     console.error("Firebase Auth not initialized yet");
@@ -1272,13 +1242,6 @@
                 const isAvailable = formAvailableCheckbox.checked;
                 
                 try {
-                    // TEMPORARY: Bypass mode check
-                    if (!db) {
-                        console.log(`🔧 BYPASS: Form availability set to ${isAvailable}`);
-                        checkFormAvailability();
-                        return;
-                    }
-                    
                     await setDoc(doc(db, ADMIN_SETTINGS_DOC), { 
                         formAvailable: isAvailable
                     }, { merge: true });

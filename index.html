@@ -817,9 +817,11 @@
                 } catch (error) {
                     console.error("Error loading admin panel data:", error);
                     console.log("🔧 BYPASS: Using fallback demo data due to error");
+                    const today = new Date().toISOString().split('T')[0];
                     moduleCodeInput.value = "DEMO";
-                    adminPanelTitle.textContent = "DEMO: Overall Lecture Rating";
-                    recoveryEmailInput.value = "swagat.kumar@gmail.com";
+                    lectureDateInput.value = today;
+                    expiryDateInput.value = today;
+                    adminPanelTitle.innerHTML = `DEMO:${today}<br>Overall Rating<br>-------------------`;
                 }
             }
 

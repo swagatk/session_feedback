@@ -362,7 +362,6 @@
             getFirestore, 
             doc, 
             getDoc, 
-            addDoc, 
             setDoc, 
             onSnapshot, 
             collection, 
@@ -483,6 +482,13 @@
                 }
                 
                 return token;
+            }
+
+            /**
+             * Builds the deterministic Firestore doc reference for a token submission.
+             */
+            function getSubmissionDocRef(surveyId, token) {
+                return doc(db, SUBMISSIONS_COLLECTION, `${surveyId}_${token}`);
             }
 
             /**
@@ -1180,13 +1186,31 @@
              */
             async function checkTokenSubmission(surveyId, token) {
                 try {
-                    const q = query(
+                    const submissionDocRef = getSubmissionDocRef(surveyId, token);
+                    const submissionSnap = await getDoc(submissionDocRef);
+                    if (submissionSnap.exists()) {
+                        return true;
+                    }
+
+                    // Fallback for legacy submissions saved under random doc IDs
+                    const legacyQuery = query(
                         collection(db, SUBMISSIONS_COLLECTION),
                         where('surveyId', '==', surveyId),
                         where('token', '==', token)
                     );
-                    const querySnapshot = await getDocs(q);
-                    return !querySnapshot.empty;
+                    const legacySnapshot = await getDocs(legacyQuery);
+
+                    if (!legacySnapshot.empty) {
+                        const legacyData = legacySnapshot.docs[0].data();
+                        try {
+                            await setDoc(submissionDocRef, legacyData);
+                        } catch (migrationError) {
+                            console.warn("Token migration skipped:", migrationError);
+                        }
+                        return true;
+                    }
+
+                    return false;
                 } catch (error) {
                     console.error("Error checking token submission:", error);
                     return false;
@@ -1331,8 +1355,18 @@
                                 userId: currentUser ? currentUser.uid : null // For analytics only
                             };
 
-                            // Add to Firestore
-                            await addDoc(collection(db, SUBMISSIONS_COLLECTION), newSubmission);
+                            const submissionDocRef = getSubmissionDocRef(currentSurveyId, token);
+                            const alreadySubmitted = await checkTokenSubmission(currentSurveyId, token);
+
+                            if (alreadySubmitted) {
+                                console.warn("Duplicate submission attempt detected for token", token);
+                                feedbackFormContainer.classList.add('hidden');
+                                successMessage.classList.remove('hidden');
+                                return;
+                            }
+
+                            // Persist submission using deterministic document id
+                            await setDoc(submissionDocRef, newSubmission);
 
                             // Update UI
                             feedbackFormContainer.classList.add('hidden');

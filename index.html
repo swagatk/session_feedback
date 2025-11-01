@@ -1868,43 +1868,92 @@
              */
             function hideCustomConfirm() {
                 confirmCallback = null; // Clear the callback
-                confirmModal.classList.add('hidden');
+                if (confirmModal) {
+                    confirmModal.classList.add('hidden');
+                }
             }
 
             // --- EVENT LISTENERS ---
-            adminButton.addEventListener('click', () => adminLoginModal.classList.remove('hidden'));
-            adminCancelButton.addEventListener('click', () => adminLoginModal.classList.add('hidden'));
-            adminLoginForm.addEventListener('submit', handleLoginFormSubmit);
-            forgotPasswordButton.addEventListener('click', handleForgotPassword);
+            if (adminButton) {
+                adminButton.addEventListener('click', () => {
+                    if (adminLoginModal) {
+                        adminLoginModal.classList.remove('hidden');
+                    }
+                });
+            }
+            if (adminCancelButton) {
+                adminCancelButton.addEventListener('click', () => {
+                    if (adminLoginModal) {
+                        adminLoginModal.classList.add('hidden');
+                    }
+                });
+            }
+            if (adminLoginForm) {
+                adminLoginForm.addEventListener('submit', handleLoginFormSubmit);
+            }
+            if (forgotPasswordButton) {
+                forgotPasswordButton.addEventListener('click', handleForgotPassword);
+            }
             
-            recoveryCancelButton.addEventListener('click', () => {
-                passwordRecoveryModal.classList.add('hidden');
-                recoveryErrorMessage.classList.add('hidden');
-                recoverySuccessMessage.classList.add('hidden');
-                document.getElementById('recovery-email-check').value = '';
-            });
-            passwordRecoveryForm.addEventListener('submit', handlePasswordRecovery);
+            if (recoveryCancelButton) {
+                recoveryCancelButton.addEventListener('click', () => {
+                    if (passwordRecoveryModal) {
+                        passwordRecoveryModal.classList.add('hidden');
+                    }
+                    if (recoveryErrorMessage) {
+                        recoveryErrorMessage.classList.add('hidden');
+                    }
+                    if (recoverySuccessMessage) {
+                        recoverySuccessMessage.classList.add('hidden');
+                    }
+                    const recoveryEmailCheckInput = document.getElementById('recovery-email-check');
+                    if (recoveryEmailCheckInput) {
+                        recoveryEmailCheckInput.value = '';
+                    }
+                });
+            }
+            if (passwordRecoveryForm) {
+                passwordRecoveryForm.addEventListener('submit', handlePasswordRecovery);
+            }
             
-            logoutButton.addEventListener('click', handleLogout);
+            if (logoutButton) {
+                logoutButton.addEventListener('click', handleLogout);
+            }
             
-            feedbackForm.addEventListener('submit', handleFormSubmit);
+            if (feedbackForm) {
+                feedbackForm.addEventListener('submit', handleFormSubmit);
+            }
             
-            saveTitleButton.addEventListener('click', handleSaveTitle);
-            saveDateButton.addEventListener('click', handleSaveDate);
-            resetFeedbackButton.addEventListener('click', resetAllFeedback);
-            downloadPdfButton.addEventListener('click', handleDownloadPdf);
+            if (saveTitleButton) {
+                saveTitleButton.addEventListener('click', handleSaveTitle);
+            }
+            if (saveDateButton) {
+                saveDateButton.addEventListener('click', handleSaveDate);
+            }
+            if (resetFeedbackButton) {
+                resetFeedbackButton.addEventListener('click', resetAllFeedback);
+            }
+            if (downloadPdfButton) {
+                downloadPdfButton.addEventListener('click', handleDownloadPdf);
+            }
             
             // Survey management event listener
-            createSurveyButton.addEventListener('click', createSurvey);
+            if (createSurveyButton) {
+                createSurveyButton.addEventListener('click', createSurvey);
+            }
             
             // Confirmation modal buttons
-            confirmCancelButton.addEventListener('click', hideCustomConfirm);
-            confirmOkButton.addEventListener('click', () => {
-                if (typeof confirmCallback === 'function') {
-                    confirmCallback(); // Execute the stored callback
-                }
-                hideCustomConfirm(); // Hide modal after action
-            });
+            if (confirmCancelButton) {
+                confirmCancelButton.addEventListener('click', hideCustomConfirm);
+            }
+            if (confirmOkButton) {
+                confirmOkButton.addEventListener('click', () => {
+                    if (typeof confirmCallback === 'function') {
+                        confirmCallback(); // Execute the stored callback
+                    }
+                    hideCustomConfirm(); // Hide modal after action
+                });
+            }
 
             // --- INITIALIZATION ---
             

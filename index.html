@@ -375,7 +375,8 @@
             where,
             getDocs,
             deleteDoc,
-            Timestamp 
+            Timestamp,
+            serverTimestamp
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         console.log("✅ All Firebase modules imported");
@@ -1006,8 +1007,16 @@
                     await setDoc(doc(db, SURVEYS_COLLECTION, surveyId), surveyData);
                     console.log("✅ Survey created:", surveyId);
                     
-                    // Reload surveys list
+                    // Reload surveys list and history
                     await loadSurveys();
+                    await loadSurveyHistory();
+                    
+                    // Select the newly created survey
+                    adminSelectedSurveyId = surveyId;
+                    adminSelectedSurveyName = buildSurveyBaseName(surveyData);
+                    highlightSurveyHistorySelection();
+                    updateSelectedSurveyDisplay();
+                    listenForFeedback(adminSelectedSurveyId);
                     
                     // Show success message
                     const successMsg = document.createElement('div');
@@ -1437,6 +1446,8 @@
                         feedback.push(docSnap.data());
                     });
                     
+                    console.log(`📊 Feedback listener received ${feedback.length} submissions for survey ${selectedSurveyId}`);
+                    
                     calculateOverallRating(feedback);
                     renderFeedbackTable(feedback);
                 }, (error) => {
@@ -1611,11 +1622,15 @@
                 }
 
                 // Sort feedback by timestamp, newest first
-                feedback.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
+                feedback.sort((a, b) => {
+                    const aTime = a.timestamp ? a.timestamp.toMillis() : 0;
+                    const bTime = b.timestamp ? b.timestamp.toMillis() : 0;
+                    return bTime - aTime;
+                });
 
                 feedback.forEach(entry => {
                     const row = document.createElement('tr');
-                    const submittedDate = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : 'N/A';
+                    const submittedDate = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : 'Just now';
                     
                     row.innerHTML = `
                         <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.clarity}</td>
@@ -1647,13 +1662,17 @@
                     async () => {
                         // --- This runs if user clicks "Confirm" ---
                         try {
+                            console.log("Starting feedback submission for survey:", currentSurveyId);
                             const formData = new FormData(feedbackForm);
                             const clarity = parseFloat(formData.get('clarity'));
                             const engagement = parseFloat(formData.get('engagement'));
                             const pace = parseFloat(formData.get('pace'));
                             
+                            console.log("Form ratings:", { clarity, engagement, pace });
+                            
                             // Get submission token for this survey
                             const token = getOrCreateSurveyToken(currentSurveyId);
+                            console.log("Using token:", token);
                             
                             const newSubmission = {
                                 surveyId: currentSurveyId,
@@ -1664,12 +1683,15 @@
                                 positive: formData.get('positive-comments'),
                                 negative: formData.get('negative-comments'),
                                 average: (clarity + engagement + pace) / 3,
-                                timestamp: Timestamp.now(),
+                                timestamp: serverTimestamp(),
                                 userId: currentUser ? currentUser.uid : null // For analytics only
                             };
 
                             const submissionDocRef = getSubmissionDocRef(currentSurveyId, token);
+                            console.log("Submission doc path:", submissionDocRef.path);
+                            
                             const alreadySubmitted = await checkTokenSubmission(currentSurveyId, token);
+                            console.log("Already submitted?", alreadySubmitted);
 
                             if (alreadySubmitted) {
                                 console.warn("Duplicate submission attempt detected for token", token);
@@ -1679,16 +1701,20 @@
                             }
 
                             // Persist submission using deterministic document id
+                            console.log("Writing submission to Firestore...");
                             await setDoc(submissionDocRef, newSubmission);
+                            console.log("✅ Feedback submitted successfully with token:", token);
 
                             // Update UI
                             feedbackFormContainer.classList.add('hidden');
                             successMessage.classList.remove('hidden');
+                            feedbackForm.reset(); // Clear the form
                             
-                            console.log("Feedback submitted successfully with token:", token);
+                            console.log("✅ Feedback submitted successfully with token:", token);
                         
                         } catch (error) {
-                            console.error("Error adding document: ", error);
+                            console.error("❌ Error submitting feedback:", error);
+                            console.error("Error details:", error.code, error.message);
                             alert("Error: Could not submit feedback. Please try again.");
                         }
                     },

@@ -1833,21 +1833,8 @@
 
             // --- INITIALIZATION ---
             
-            // TEMPORARY: Bypass Firebase auth for testing - IMMEDIATE
-            console.log("🔧 TEMPORARY: Immediate Firebase bypass mode");
-            isAdminLoggedIn = true;
-            adminButton.textContent = "Admin (Bypass)";
-            adminButton.disabled = false;
-            adminButton.classList.add('bg-green-600', 'hover:bg-green-700');
-            adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
-            adminEmailDisplay.textContent = "swagat.kumar@gmail.com (bypass mode)";
-            updateView();
-            console.log("🔧 Admin bypass activated immediately");
-            
-            // Try to initialize Firebase in background (non-blocking)
-            initializeFirebase().catch(err => {
-                console.warn("Firebase initialization failed (expected in bypass mode):", err);
-            });
+            // Initialize Firebase (normal mode)
+            initializeFirebase();
         });
     </script>
 </body>

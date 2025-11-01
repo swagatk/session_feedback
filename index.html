@@ -1274,14 +1274,27 @@
              * Loads survey history entries for the admin view.
              */
             async function loadSurveyHistory() {
-                if (!db || !surveyHistoryList) {
+                console.log("loadSurveyHistory called");
+                console.log("db exists?", !!db);
+                console.log("surveyHistoryList exists?", !!surveyHistoryList);
+                
+                if (!db) {
+                    console.warn("Cannot load survey history - db not initialized");
+                    return;
+                }
+                
+                if (!surveyHistoryList) {
+                    console.error("Cannot load survey history - surveyHistoryList element not found");
                     return;
                 }
 
                 surveyHistoryList.innerHTML = '<p class="text-sm text-gray-500">Loading surveys...</p>';
 
                 try {
+                    console.log("📋 Loading survey history...");
                     const snapshot = await getDocs(collection(db, SURVEYS_COLLECTION));
+                    console.log(`Found ${snapshot.size} surveys in Firestore`);
+                    
                     const surveys = [];
                     snapshot.forEach((docSnap) => {
                         const data = docSnap.data();
@@ -1319,6 +1332,7 @@
                             displayName = counter === 0 ? baseName : `${baseName}-${counter}`;
                             displayNameUpdates.push(
                                 setDoc(doc(db, SURVEYS_COLLECTION, survey.id), { displayName }, { merge: true })
+                                    .catch(err => console.warn(`Failed to update displayName for ${survey.id}:`, err))
                             );
                         }
 
@@ -1327,7 +1341,8 @@
                     });
 
                     if (displayNameUpdates.length > 0) {
-                        await Promise.allSettled(displayNameUpdates);
+                        console.log(`Updating display names for ${displayNameUpdates.length} surveys...`);
+                        await Promise.all(displayNameUpdates);
                     }
 
                     const descending = [...surveys].sort((a, b) => {
@@ -1359,12 +1374,20 @@
                         adminSelectedSurveyName = computedNames.get(firstSurvey.id) || buildSurveyBaseName(firstSurvey);
                     }
 
+                    console.log("Highlighting selection and updating display...");
                     highlightSurveyHistorySelection();
                     updateSelectedSurveyDisplay();
+                    
+                    console.log("Starting feedback listener for survey:", adminSelectedSurveyId);
                     listenForFeedback(adminSelectedSurveyId);
+                    
+                    console.log("✅ Survey history loaded successfully");
                 } catch (error) {
-                    console.error('Error loading survey history:', error);
-                    surveyHistoryList.innerHTML = '<p class="text-sm text-red-500">Failed to load survey history.</p>';
+                    console.error('❌ Error loading survey history:', error);
+                    console.error('Error details:', error.message, error.stack);
+                    if (surveyHistoryList) {
+                        surveyHistoryList.innerHTML = `<p class="text-sm text-red-500">Failed to load survey history: ${error.message}</p>`;
+                    }
                 }
             }
 
@@ -1406,8 +1429,9 @@
                     await setDoc(doc(db, SURVEYS_COLLECTION, surveyId), { active: false }, { merge: true });
                     console.log("✅ Survey deactivated:", surveyId);
                     
-                    // Reload surveys list
+                    // Reload surveys list and survey history
                     await loadSurveys();
+                    await loadSurveyHistory();
                     
                 } catch (error) {
                     console.error("❌ Error deactivating survey:", error);

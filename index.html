@@ -435,6 +435,14 @@
             // Survey Management selectors
             const createSurveyButton = document.getElementById('create-survey-button');
             const surveysList = document.getElementById('surveys-list');
+            
+            // Optional elements that may not exist in UI (legacy/removed features)
+            const recoveryEmailInput = document.getElementById('recovery-email-input');
+            const emailSavedMessage = document.getElementById('email-saved-message');
+            const currentPasswordInput = document.getElementById('current-password-input');
+            const newPasswordInput = document.getElementById('new-password-input');
+            const confirmPasswordInput = document.getElementById('confirm-password-input');
+            const passwordChangeMessage = document.getElementById('password-change-message');
 
             // --- FUNCTIONS ---
 
@@ -917,7 +925,9 @@
                         adminSettings.recoveryEmail = "";
                         await setDoc(adminDocRef, { recoveryEmail: "" });
                     }
-                    recoveryEmailInput.value = adminSettings.recoveryEmail;
+                    if (recoveryEmailInput) {
+                        recoveryEmailInput.value = adminSettings.recoveryEmail;
+                    }
                 } catch (error) {
                     console.error("Error loading admin panel data:", error);
                     // Set default values on error
@@ -1478,16 +1488,22 @@
              * Saves the recovery email to Firestore.
              */
             async function handleSaveEmail() {
+                if (!recoveryEmailInput) {
+                    console.warn("Recovery email input not found in UI");
+                    return;
+                }
                 const newEmail = recoveryEmailInput.value.trim();
                 try {
                     adminSettings.recoveryEmail = newEmail;
                     await setDoc(doc(db, ADMIN_SETTINGS_DOC), adminSettings);
 
-                    // Show saved message
-                    emailSavedMessage.classList.remove('hidden');
-                    setTimeout(() => {
-                        emailSavedMessage.classList.add('hidden');
-                    }, 2000);
+                    // Show saved message (if element exists)
+                    if (emailSavedMessage) {
+                        emailSavedMessage.classList.remove('hidden');
+                        setTimeout(() => {
+                            emailSavedMessage.classList.add('hidden');
+                        }, 2000);
+                    }
                 } catch (error) {
                     console.error("Error saving recovery email:", error);
                     alert("Error: Could not save recovery email.");
@@ -1498,12 +1514,20 @@
              * Handles password change using Firebase Authentication.
              */
             async function handleChangePassword() {
+                // Check if password elements exist
+                if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) {
+                    console.warn("Password change UI elements not found");
+                    return;
+                }
+                
                 const currentPassword = currentPasswordInput.value;
                 const newPassword = newPasswordInput.value;
                 const confirmPassword = confirmPasswordInput.value;
 
                 // Clear previous messages
-                passwordChangeMessage.classList.add('hidden');
+                if (passwordChangeMessage) {
+                    passwordChangeMessage.classList.add('hidden');
+                }
 
                 if (!currentPassword) {
                     showPasswordMessage("Please enter your current password.", "error");
@@ -1566,6 +1590,11 @@
              * Shows password change message.
              */
             function showPasswordMessage(message, type) {
+                if (!passwordChangeMessage) {
+                    console.log(message); // Fallback to console if UI element doesn't exist
+                    return;
+                }
+                
                 passwordChangeMessage.textContent = message;
                 passwordChangeMessage.classList.remove('hidden', 'text-green-600', 'text-red-600');
                 passwordChangeMessage.classList.add(type === 'success' ? 'text-green-600' : 'text-red-600');

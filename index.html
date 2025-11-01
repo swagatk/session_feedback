@@ -127,6 +127,33 @@
             <div id="admin-settings" class="no-print mt-12 pt-8 border-t border-gray-200">
                 <h3 class="text-2xl font-bold text-gray-800 mb-6">Admin Settings</h3>
                 <div class="space-y-6">
+                    
+                    <!-- Survey Management -->
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 class="text-lg font-semibold text-green-800 mb-4">Survey Management</h4>
+                        
+                        <!-- Create New Survey -->
+                        <div class="mb-4">
+                            <button id="create-survey-button" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Create New Survey Link
+                            </button>
+                            <p class="mt-2 text-xs text-green-700">Creates a unique link that can be shared with students</p>
+                        </div>
+                        
+                        <!-- Active Surveys List -->
+                        <div id="surveys-list" class="space-y-3">
+                            <p class="text-sm text-gray-600 italic">No active surveys yet. Create one to get started.</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Legacy Settings (Deprecated but kept for compatibility) -->
+                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 class="text-sm font-semibold text-yellow-800 mb-2">⚠️ Legacy Settings (Old Method)</h4>
+                        <p class="text-xs text-yellow-700 mb-4">These settings are kept for backward compatibility. Use Survey Management above for new surveys.</p>
+                    
                     <!-- Set Module Code -->
                     <div>
                         <label for="module-code-input" class="block text-sm font-medium text-gray-700">Module Code</label>
@@ -163,13 +190,16 @@
                         <p id="expiry-saved-message" class="mt-2 text-sm text-green-600 hidden">Expiry date saved!</p>
                         <p class="mt-1 text-xs text-gray-500">Feedback form will be disabled after midnight of this date</p>
                     </div>
+                    
+                    </div>
+                    <!-- End of Legacy Settings -->
 
-                    <!-- Form Availability Toggle -->
+                    <!-- Form Availability Toggle (Deprecated - use surveys instead) -->
                     <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
                         <div class="flex items-center">
                             <input type="checkbox" id="form-available-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                             <label for="form-available-checkbox" class="ml-2 block text-sm font-medium text-gray-900">
-                                Make form available
+                                Make form available (Legacy)
                             </label>
                         </div>
                         <p class="mt-2 text-xs text-gray-600">Check this box to make the feedback form accessible to users. When unchecked, users will see a message that no survey is available.</p>
@@ -392,17 +422,19 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log("🚀 DOM LOADED - Starting app");
             // --- CONSTANTS ---
-            const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key
-            const SESSION_ID_KEY = "sessionId"; // Persistent session identifier
+            const SUBMITTED_KEY = "feedbackSubmitted"; // localStorage key (deprecated)
+            const SURVEY_TOKEN_PREFIX = "survey_token_"; // Prefix for survey-specific tokens
             // Simplified paths for GitHub deployment
-            const FEEDBACK_COLLECTION = `lecture-feedback`;
-            const SETTINGS_DOC = `app-settings/title`;
+            const SURVEYS_COLLECTION = `surveys`;
+            const SUBMISSIONS_COLLECTION = `survey-submissions`;
+            const SETTINGS_DOC = `app-settings/title`; // Deprecated - kept for backward compatibility
             const ADMIN_SETTINGS_DOC = `admin/settings`;
             // Admin email authorization
             const ADMIN_EMAILS = ['swagat.kumar@gmail.com']; // Only these emails can access admin panel
 
             // --- STATE ---
             let db, auth;
+            let currentSurveyId = null; // Current survey ID from URL
             let isAdminLoggedIn = false;
             let currentUser = null;
             let confirmCallback = null;
@@ -460,26 +492,46 @@
             const confirmMessage = document.getElementById('confirm-message');
             const confirmOkButton = document.getElementById('confirm-ok-button');
             const confirmCancelButton = document.getElementById('confirm-cancel-button');
+            
+            // Survey Management selectors
+            const createSurveyButton = document.getElementById('create-survey-button');
+            const surveysList = document.getElementById('surveys-list');
 
             // --- FUNCTIONS ---
 
             /**
-             * Gets or creates a persistent session ID for this browser.
-             * This ID persists across browser sessions and is used to track feedback submissions.
+             * Generates a unique survey ID.
              */
-            function getOrCreateSessionId() {
-                let sessionId = localStorage.getItem(SESSION_ID_KEY);
+            function generateSurveyId() {
+                return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+            }
+
+            /**
+             * Gets or creates a submission token for the current survey.
+             * Each survey gets its own unique token stored in localStorage.
+             */
+            function getOrCreateSurveyToken(surveyId) {
+                const tokenKey = SURVEY_TOKEN_PREFIX + surveyId;
+                let token = localStorage.getItem(tokenKey);
                 
-                if (!sessionId) {
-                    // Create a new unique session ID
-                    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
-                    localStorage.setItem(SESSION_ID_KEY, sessionId);
-                    console.log("Created new session ID:", sessionId);
+                if (!token) {
+                    // Create a new unique token for this survey
+                    token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    localStorage.setItem(tokenKey, token);
+                    console.log(`Created new token for survey ${surveyId}:`, token);
                 } else {
-                    console.log("Using existing session ID:", sessionId);
+                    console.log(`Using existing token for survey ${surveyId}:`, token);
                 }
                 
-                return sessionId;
+                return token;
+            }
+
+            /**
+             * Gets the current survey ID from URL parameters.
+             */
+            function getSurveyIdFromURL() {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('survey');
             }
 
             /**
@@ -689,8 +741,19 @@
                     console.log("Anonymous sign-in successful");
 
                     console.log("Authentication complete. Starting listeners...");
-                    // Start listeners and update view
-                    listenForTitle();
+                    
+                    // Check if there's a survey ID in URL
+                    currentSurveyId = getSurveyIdFromURL();
+                    
+                    if (currentSurveyId) {
+                        console.log("Survey ID found in URL:", currentSurveyId);
+                        await initializeSurvey(currentSurveyId);
+                    } else {
+                        console.log("No survey ID in URL - showing default view");
+                        // For backward compatibility, listen for old format
+                        listenForTitle();
+                    }
+                    
                     console.log("Firebase initialization complete!");
                     
                     // Update admin button to show system is ready
@@ -804,6 +867,7 @@
                     // Start admin listeners
                     listenForFeedback(); 
                     loadAdminPanelData();
+                    loadSurveys(); // Load active surveys list
                 } else {
                     // Stop admin listener
                     if (feedbackListener) {
@@ -892,6 +956,163 @@
             }
 
             /**
+             * Creates a new survey and generates a unique link.
+             */
+            async function createSurvey() {
+                try {
+                    const moduleCode = moduleCodeInput.value.trim();
+                    const lectureDate = lectureDateInput.value;
+                    
+                    if (!moduleCode) {
+                        alert("Please enter a module code before creating a survey.");
+                        return;
+                    }
+                    
+                    if (!lectureDate) {
+                        alert("Please select a lecture date before creating a survey.");
+                        return;
+                    }
+                    
+                    const surveyId = generateSurveyId();
+                    const expiryDate = expiryDateInput.value || null;
+                    
+                    // Create survey document
+                    const surveyData = {
+                        id: surveyId,
+                        moduleCode: moduleCode,
+                        lectureDate: lectureDate,
+                        expiryDate: expiryDate,
+                        createdAt: new Date().toISOString(),
+                        createdBy: currentUser.email,
+                        active: true
+                    };
+                    
+                    await setDoc(doc(db, SURVEYS_COLLECTION, surveyId), surveyData);
+                    console.log("✅ Survey created:", surveyId);
+                    
+                    // Reload surveys list
+                    await loadSurveys();
+                    
+                    // Show success message
+                    const successMsg = document.createElement('div');
+                    successMsg.className = 'mt-2 text-green-600 text-sm';
+                    successMsg.textContent = '✓ Survey created successfully!';
+                    createSurveyButton.parentNode.appendChild(successMsg);
+                    setTimeout(() => successMsg.remove(), 3000);
+                    
+                } catch (error) {
+                    console.error("❌ Error creating survey:", error);
+                    alert("Failed to create survey: " + error.message);
+                }
+            }
+
+            /**
+             * Loads and displays all active surveys.
+             */
+            async function loadSurveys() {
+                try {
+                    const q = query(
+                        collection(db, SURVEYS_COLLECTION),
+                        where('active', '==', true)
+                    );
+                    
+                    const querySnapshot = await getDocs(q);
+                    
+                    if (querySnapshot.empty) {
+                        surveysList.innerHTML = '<p class="text-gray-500 text-sm">No active surveys. Create one to get started!</p>';
+                        return;
+                    }
+                    
+                    surveysList.innerHTML = '';
+                    
+                    querySnapshot.forEach((doc) => {
+                        const survey = doc.data();
+                        const surveyItem = document.createElement('div');
+                        surveyItem.className = 'bg-gray-50 p-3 rounded border border-gray-200 mb-2';
+                        
+                        const surveyLink = `${window.location.origin}${window.location.pathname}?survey=${survey.id}`;
+                        
+                        surveyItem.innerHTML = `
+                            <div class="flex justify-between items-start">
+                                <div class="flex-1">
+                                    <div class="font-medium text-gray-900">${survey.moduleCode}</div>
+                                    <div class="text-sm text-gray-600">Date: ${survey.lectureDate}</div>
+                                    ${survey.expiryDate ? `<div class="text-sm text-gray-600">Expires: ${survey.expiryDate}</div>` : ''}
+                                    <div class="mt-1 text-xs text-gray-500">Created: ${new Date(survey.createdAt).toLocaleDateString()}</div>
+                                    <div class="mt-2 flex items-center gap-2">
+                                        <input type="text" readonly value="${surveyLink}" 
+                                               class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded bg-white"
+                                               onclick="this.select()">
+                                        <button onclick="copySurveyLink('${surveyLink}')" 
+                                                class="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
+                                            Copy Link
+                                        </button>
+                                    </div>
+                                </div>
+                                <button onclick="deactivateSurvey('${survey.id}')" 
+                                        class="ml-2 px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
+                                    Deactivate
+                                </button>
+                            </div>
+                        `;
+                        
+                        surveysList.appendChild(surveyItem);
+                    });
+                    
+                } catch (error) {
+                    console.error("❌ Error loading surveys:", error);
+                    surveysList.innerHTML = '<p class="text-red-500 text-sm">Failed to load surveys.</p>';
+                }
+            }
+
+            /**
+             * Copies survey link to clipboard.
+             */
+            window.copySurveyLink = async function(link) {
+                try {
+                    await navigator.clipboard.writeText(link);
+                    
+                    // Show temporary success message
+                    const button = event.target;
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
+                    button.classList.add('bg-green-500');
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.classList.remove('bg-green-500');
+                        button.classList.add('bg-blue-500', 'hover:bg-blue-600');
+                    }, 2000);
+                    
+                } catch (error) {
+                    console.error("❌ Error copying link:", error);
+                    alert("Failed to copy link. Please copy manually.");
+                }
+            };
+
+            /**
+             * Deactivates a survey.
+             */
+            window.deactivateSurvey = async function(surveyId) {
+                if (!confirm("Are you sure you want to deactivate this survey? Students will no longer be able to submit feedback.")) {
+                    return;
+                }
+                
+                try {
+                    await setDoc(doc(db, SURVEYS_COLLECTION, surveyId), { active: false }, { merge: true });
+                    console.log("✅ Survey deactivated:", surveyId);
+                    
+                    // Reload surveys list
+                    await loadSurveys();
+                    
+                } catch (error) {
+                    console.error("❌ Error deactivating survey:", error);
+                    alert("Failed to deactivate survey: " + error.message);
+                }
+            };
+
+            /**
              * Listens for feedback data from Firestore and updates the admin panel.
              */
             function listenForFeedback() {
@@ -910,6 +1131,86 @@
                     console.error("Error listening for feedback:", error);
                     displayError("Listener Error", "Could not get feedback data.");
                 });
+            }
+
+            /**
+             * Initializes and validates a survey from URL parameter.
+             */
+            async function initializeSurvey(surveyId) {
+                try {
+                    // Check if survey exists
+                    const surveyDocRef = doc(db, SURVEYS_COLLECTION, surveyId);
+                    const surveySnap = await getDoc(surveyDocRef);
+                    
+                    if (!surveySnap.exists()) {
+                        displayError("Invalid Survey", "This survey link is not valid or has been deleted.");
+                        return;
+                    }
+                    
+                    const surveyData = surveySnap.data();
+                    
+                    // Check if survey is active
+                    if (!surveyData.active) {
+                        displayError("Survey Closed", "This survey is no longer accepting responses.");
+                        return;
+                    }
+                    
+                    // Check if survey has expired
+                    if (surveyData.expiryDate) {
+                        const now = new Date();
+                        now.setHours(0, 0, 0, 0);
+                        const expiry = new Date(surveyData.expiryDate + 'T00:00:00');
+                        expiry.setHours(23, 59, 59, 999);
+                        
+                        if (now > expiry) {
+                            displayError("Survey Expired", "This survey has expired and is no longer accepting responses.");
+                            return;
+                        }
+                    }
+                    
+                    // Get or create submission token for this survey
+                    const token = getOrCreateSurveyToken(surveyId);
+                    
+                    // Check if this token has already been used
+                    const hasSubmitted = await checkTokenSubmission(surveyId, token);
+                    
+                    if (hasSubmitted) {
+                        // Show success message
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                        console.log("Token already used for this survey");
+                        return;
+                    }
+                    
+                    // Show the form with survey details
+                    formTitle.innerHTML = `${surveyData.moduleCode}:${surveyData.lectureDate}<br>Submit your feedback`;
+                    feedbackFormContainer.classList.remove('hidden');
+                    successMessage.classList.add('hidden');
+                    
+                    console.log("Survey initialized successfully:", surveyData);
+                    
+                } catch (error) {
+                    console.error("Error initializing survey:", error);
+                    displayError("Error", "Could not load survey. Please try again later.");
+                }
+            }
+
+            /**
+             * Checks if a token has already been used for a survey.
+             */
+            async function checkTokenSubmission(surveyId, token) {
+                try {
+                    const q = query(
+                        collection(db, SUBMISSIONS_COLLECTION),
+                        where('surveyId', '==', surveyId),
+                        where('token', '==', token)
+                    );
+                    const querySnapshot = await getDocs(q);
+                    return !querySnapshot.empty;
+                } catch (error) {
+                    console.error("Error checking token submission:", error);
+                    return false;
+                }
             }
 
             /**
@@ -1100,6 +1401,12 @@
             async function handleFormSubmit(e) {
                 e.preventDefault();
                 
+                // Check if we have a valid survey
+                if (!currentSurveyId) {
+                    alert("No survey selected. Please use a valid survey link.");
+                    return;
+                }
+                
                 showCustomConfirm(
                     "Submit Feedback?",
                     "Are you sure you want to submit this feedback? You cannot edit it later.",
@@ -1111,10 +1418,12 @@
                             const engagement = parseFloat(formData.get('engagement'));
                             const pace = parseFloat(formData.get('pace'));
                             
-                            // Get persistent session ID for this browser
-                            const sessionId = getOrCreateSessionId();
+                            // Get submission token for this survey
+                            const token = getOrCreateSurveyToken(currentSurveyId);
                             
-                            const newFeedback = {
+                            const newSubmission = {
+                                surveyId: currentSurveyId,
+                                token: token,
                                 clarity,
                                 engagement,
                                 pace,
@@ -1122,19 +1431,17 @@
                                 negative: formData.get('negative-comments'),
                                 average: (clarity + engagement + pace) / 3,
                                 timestamp: Timestamp.now(),
-                                userId: currentUser ? currentUser.uid : null, // Track anonymous user (changes per session)
-                                sessionId: sessionId // Track browser session (persists across sessions)
+                                userId: currentUser ? currentUser.uid : null // For analytics only
                             };
 
                             // Add to Firestore
-                            await addDoc(collection(db, FEEDBACK_COLLECTION), newFeedback);
-
-                            // Set submitted flag in localStorage
-                            localStorage.setItem(SUBMITTED_KEY, 'true');
+                            await addDoc(collection(db, SUBMISSIONS_COLLECTION), newSubmission);
 
                             // Update UI
                             feedbackFormContainer.classList.add('hidden');
                             successMessage.classList.remove('hidden');
+                            
+                            console.log("Feedback submitted successfully with token:", token);
                         
                         } catch (error) {
                             console.error("Error adding document: ", error);
@@ -1733,6 +2040,9 @@
             formAvailableCheckbox.addEventListener('change', handleFormAvailableChange);
             resetFeedbackButton.addEventListener('click', resetAllFeedback);
             downloadPdfButton.addEventListener('click', handleDownloadPdf);
+            
+            // Survey management event listener
+            createSurveyButton.addEventListener('click', createSurvey);
             
             // Confirmation modal buttons
             confirmCancelButton.addEventListener('click', hideCustomConfirm);

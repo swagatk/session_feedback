@@ -1879,8 +1879,25 @@
 
             // --- INITIALIZATION ---
             
+            // Set a timeout to enable admin button if Firebase doesn't initialize
+            setTimeout(() => {
+                if (adminButton.disabled) {
+                    console.warn("⚠️ Firebase initialization timeout - enabling admin button");
+                    adminButton.textContent = "Admin (Click to View)";
+                    adminButton.disabled = false;
+                    adminButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
+                }
+            }, 3000); // 3 second timeout
+            
             // Initialize Firebase (normal mode)
-            initializeFirebase();
+            initializeFirebase().catch(err => {
+                console.error("Firebase initialization failed:", err);
+                adminButton.textContent = "Admin (Error)";
+                adminButton.disabled = false;
+                adminButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                adminButton.classList.remove('bg-gray-700', 'hover:bg-gray-800');
+            });
         });
     </script>
 </body>

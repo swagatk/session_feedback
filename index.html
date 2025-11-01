@@ -427,6 +427,7 @@
             // Simplified paths for GitHub deployment
             const SURVEYS_COLLECTION = `surveys`;
             const SUBMISSIONS_COLLECTION = `survey-submissions`;
+            const FEEDBACK_COLLECTION = `lecture-feedback`; // Legacy collection (deprecated)
             const SETTINGS_DOC = `app-settings/title`; // Deprecated - kept for backward compatibility
             const ADMIN_SETTINGS_DOC = `admin/settings`;
             // Admin email authorization
@@ -1114,11 +1115,12 @@
 
             /**
              * Listens for feedback data from Firestore and updates the admin panel.
+             * Now listens to the new survey-submissions collection.
              */
             function listenForFeedback() {
                 if (feedbackListener) feedbackListener(); // Unsubscribe from old listener
 
-                const q = query(collection(db, FEEDBACK_COLLECTION));
+                const q = query(collection(db, SUBMISSIONS_COLLECTION));
                 feedbackListener = onSnapshot(q, (querySnapshot) => {
                     const feedback = [];
                     querySnapshot.forEach((doc) => {
@@ -1819,6 +1821,7 @@
 
             /**
              * Resets all feedback data from Firestore.
+             * Now deletes from survey-submissions collection.
              */
             async function resetAllFeedback() {
                 showCustomConfirm(
@@ -1826,7 +1829,7 @@
                     "This will delete *all* feedback from the database permanently. This action cannot be undone.",
                     async () => {
                         try {
-                            const q = query(collection(db, FEEDBACK_COLLECTION));
+                            const q = query(collection(db, SUBMISSIONS_COLLECTION));
                             const querySnapshot = await getDocs(q);
                             
                             // Delete all documents in parallel
@@ -1836,7 +1839,7 @@
                             });
                             await Promise.all(deletePromises);
                             
-                            // Also clear the title
+                            // Also clear the title (legacy)
                             await setDoc(doc(db, SETTINGS_DOC), { moduleCode: "" });
                             
                             // Clear local submitted flags (optional, but good for testing)

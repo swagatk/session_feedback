@@ -148,62 +148,6 @@
                             <p class="text-sm text-gray-600 italic">No active surveys yet. Create one to get started.</p>
                         </div>
                     </div>
-                    
-                    <!-- Legacy Settings (Deprecated but kept for compatibility) -->
-                    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h4 class="text-sm font-semibold text-yellow-800 mb-2">⚠️ Legacy Settings (Old Method)</h4>
-                        <p class="text-xs text-yellow-700 mb-4">These settings are kept for backward compatibility. Use Survey Management above for new surveys.</p>
-                    
-                    <!-- Set Module Code -->
-                    <div>
-                        <label for="module-code-input" class="block text-sm font-medium text-gray-700">Module Code</label>
-                        <div class="mt-1 flex rounded-md shadow-sm">
-                            <input type="text" id="module-code-input" class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g., CS101">
-                            <button id="save-title-button" class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                Save
-                            </button>
-                        </div>
-                        <p id="title-saved-message" class="mt-2 text-sm text-green-600 hidden">Module code saved!</p>
-                    </div>
-
-                    <!-- Set Date -->
-                    <div>
-                        <label for="lecture-date-input" class="block text-sm font-medium text-gray-700">Lecture Date</label>
-                        <div class="mt-1 flex rounded-md shadow-sm">
-                            <input type="date" id="lecture-date-input" class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            <button id="save-date-button" class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                Save
-                            </button>
-                        </div>
-                        <p id="date-saved-message" class="mt-2 text-sm text-green-600 hidden">Date saved!</p>
-                    </div>
-
-                    <!-- Set Expiry Date -->
-                    <div>
-                        <label for="expiry-date-input" class="block text-sm font-medium text-gray-700">Expiry Date</label>
-                        <div class="mt-1 flex rounded-md shadow-sm">
-                            <input type="date" id="expiry-date-input" class="flex-1 block w-full rounded-none rounded-l-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            <button id="save-expiry-button" class="inline-flex items-center rounded-r-md border border-l-0 border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                Save
-                            </button>
-                        </div>
-                        <p id="expiry-saved-message" class="mt-2 text-sm text-green-600 hidden">Expiry date saved!</p>
-                        <p class="mt-1 text-xs text-gray-500">Feedback form will be disabled after midnight of this date</p>
-                    </div>
-                    
-                    </div>
-                    <!-- End of Legacy Settings -->
-
-                    <!-- Form Availability Toggle (Deprecated - use surveys instead) -->
-                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                        <div class="flex items-center">
-                            <input type="checkbox" id="form-available-checkbox" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
-                            <label for="form-available-checkbox" class="ml-2 block text-sm font-medium text-gray-900">
-                                Make form available (Legacy)
-                            </label>
-                        </div>
-                        <p class="mt-2 text-xs text-gray-600">Check this box to make the feedback form accessible to users. When unchecked, users will see a message that no survey is available.</p>
-                    </div>
 
                     <!-- Admin Account Settings -->
                     <div class="bg-gray-50 p-4 rounded-lg">
@@ -478,12 +422,6 @@
             const lectureDateInput = document.getElementById('lecture-date-input');
             const saveDateButton = document.getElementById('save-date-button');
             const dateSavedMessage = document.getElementById('date-saved-message');
-            
-            const expiryDateInput = document.getElementById('expiry-date-input');
-            const saveExpiryButton = document.getElementById('save-expiry-button');
-            const expirySavedMessage = document.getElementById('expiry-saved-message');
-            
-            const formAvailableCheckbox = document.getElementById('form-available-checkbox');
             
             const resetFeedbackButton = document.getElementById('reset-feedback-button');
             const downloadPdfButton = document.getElementById('download-pdf-button');
@@ -903,12 +841,10 @@
                     const titleDocSnap = await getDoc(titleDocRef);
                     let moduleCode = "";
                     let lectureDate = "";
-                    let expiryDate = "";
                     if (titleDocSnap.exists()) {
                         const data = titleDocSnap.data();
                         moduleCode = data.moduleCode || "";
                         lectureDate = data.lectureDate || "";
-                        expiryDate = data.expiryDate || "";
                     }
                     
                     // Set module code
@@ -920,29 +856,20 @@
                     }
                     lectureDateInput.value = lectureDate;
                     
-                    // Set expiry date - default to today if not set
-                    if (!expiryDate) {
-                        expiryDate = new Date().toISOString().split('T')[0];
-                    }
-                    expiryDateInput.value = expiryDate;
-                    
                     // Update admin panel title
                     const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
                     adminPanelTitle.innerHTML = adminTitle;
 
-                    // Load admin settings (recovery email and form availability)
+                    // Load admin settings (recovery email)
                     const adminDocRef = doc(db, ADMIN_SETTINGS_DOC);
                     const adminDocSnap = await getDoc(adminDocRef);
                     if (adminDocSnap.exists()) {
                         const data = adminDocSnap.data();
                         adminSettings.recoveryEmail = data.recoveryEmail || "";
-                        // Load form availability (default false/unchecked)
-                        formAvailableCheckbox.checked = data.formAvailable || false;
                     } else {
                         // Initialize admin settings if they don't exist
                         adminSettings.recoveryEmail = "";
-                        await setDoc(adminDocRef, { recoveryEmail: "", formAvailable: false });
-                        formAvailableCheckbox.checked = false;
+                        await setDoc(adminDocRef, { recoveryEmail: "" });
                     }
                     recoveryEmailInput.value = adminSettings.recoveryEmail;
                 } catch (error) {
@@ -951,7 +878,6 @@
                     const today = new Date().toISOString().split('T')[0];
                     moduleCodeInput.value = "";
                     lectureDateInput.value = today;
-                    expiryDateInput.value = today;
                     adminPanelTitle.innerHTML = `Overall Rating<br>-------------------`;
                 }
             }
@@ -975,14 +901,12 @@
                     }
                     
                     const surveyId = generateSurveyId();
-                    const expiryDate = expiryDateInput.value || null;
                     
                     // Create survey document
                     const surveyData = {
                         id: surveyId,
                         moduleCode: moduleCode,
                         lectureDate: lectureDate,
-                        expiryDate: expiryDate,
                         createdAt: new Date().toISOString(),
                         createdBy: currentUser.email,
                         active: true
@@ -1038,7 +962,6 @@
                                 <div class="flex-1">
                                     <div class="font-medium text-gray-900">${survey.moduleCode}</div>
                                     <div class="text-sm text-gray-600">Date: ${survey.lectureDate}</div>
-                                    ${survey.expiryDate ? `<div class="text-sm text-gray-600">Expires: ${survey.expiryDate}</div>` : ''}
                                     <div class="mt-1 text-xs text-gray-500">Created: ${new Date(survey.createdAt).toLocaleDateString()}</div>
                                     <div class="mt-2 flex items-center gap-2">
                                         <input type="text" readonly value="${surveyLink}" 
@@ -1157,19 +1080,6 @@
                         return;
                     }
                     
-                    // Check if survey has expired
-                    if (surveyData.expiryDate) {
-                        const now = new Date();
-                        now.setHours(0, 0, 0, 0);
-                        const expiry = new Date(surveyData.expiryDate + 'T00:00:00');
-                        expiry.setHours(23, 59, 59, 999);
-                        
-                        if (now > expiry) {
-                            displayError("Survey Expired", "This survey has expired and is no longer accepting responses.");
-                            return;
-                        }
-                    }
-                    
                     // Get or create submission token for this survey
                     const token = getOrCreateSurveyToken(surveyId);
                     
@@ -1262,89 +1172,6 @@
             }
 
             /**
-             * Checks if the feedback form should be available based on form availability setting and expiry date.
-             */
-            function checkFormAvailability(expiryDate = null, formAvailable = true) {
-                // Don't show "unavailable" message if user has already submitted
-                // They should continue seeing the success message
-                if (localStorage.getItem(SUBMITTED_KEY)) {
-                    return;
-                }
-                
-                // First check if form is manually disabled via setting
-                if (!formAvailable) {
-                    disableFeedbackForm('unavailable');
-                    return;
-                }
-                
-                // If no expiry date provided, try to get from input
-                if (!expiryDate && expiryDateInput) {
-                    expiryDate = expiryDateInput.value;
-                }
-                
-                // If still no expiry date, form is available
-                if (!expiryDate) {
-                    enableFeedbackForm();
-                    return;
-                }
-                
-                // Get current date at midnight (local time)
-                const now = new Date();
-                now.setHours(0, 0, 0, 0);
-                
-                // Get expiry date at midnight
-                const expiry = new Date(expiryDate + 'T00:00:00');
-                expiry.setHours(23, 59, 59, 999); // End of expiry day
-                
-                // Check if current time is after expiry
-                if (now > expiry) {
-                    disableFeedbackForm('expired');
-                } else {
-                    enableFeedbackForm();
-                }
-            }
-
-            /**
-             * Disables the feedback form when expired or unavailable.
-             */
-            function disableFeedbackForm(reason = 'expired') {
-                if (feedbackFormContainer && !isAdminLoggedIn) {
-                    feedbackForm.style.opacity = '0.5';
-                    feedbackForm.style.pointerEvents = 'none';
-                    
-                    // Add disabled message
-                    let disabledMsg = document.getElementById('expired-message');
-                    if (!disabledMsg) {
-                        disabledMsg = document.createElement('div');
-                        disabledMsg.id = 'expired-message';
-                        disabledMsg.className = 'mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-center';
-                        feedbackFormContainer.insertBefore(disabledMsg, feedbackForm);
-                    }
-                    
-                    // Set message based on reason
-                    if (reason === 'unavailable') {
-                        disabledMsg.innerHTML = '<p class="text-red-800 font-semibold">No survey is available right now. Please check again later.</p>';
-                    } else {
-                        disabledMsg.innerHTML = '<p class="text-red-800 font-semibold">This feedback form has expired and is no longer accepting responses.</p>';
-                    }
-                }
-            }
-
-            /**
-             * Enables the feedback form when not expired.
-             */
-            function enableFeedbackForm() {
-                if (feedbackForm) {
-                    feedbackForm.style.opacity = '1';
-                    feedbackForm.style.pointerEvents = 'auto';
-                    
-                    // Remove expired message if it exists
-                    const expiredMsg = document.getElementById('expired-message');
-                    if (expiredMsg) {
-                        expiredMsg.remove();
-                    }
-                }
-            }            /**
              * Calculates and displays the overall average rating.
              */
             function calculateOverallRating(feedback) {
@@ -1598,56 +1425,6 @@
                 } catch (error) {
                     console.error("Error saving date:", error);
                     alert("Error: Could not save date.");
-                }
-            }
-
-            /**
-             * Saves the expiry date to Firestore.
-             */
-            async function handleSaveExpiry() {
-                const newExpiryDate = expiryDateInput.value;
-                
-                try {
-                    await setDoc(doc(db, SETTINGS_DOC), { 
-                        expiryDate: newExpiryDate
-                    }, { merge: true });
-
-                    // Show saved message
-                    expirySavedMessage.classList.remove('hidden');
-                    setTimeout(() => {
-                        expirySavedMessage.classList.add('hidden');
-                    }, 2000);
-                    
-                    // Check and update form availability (admin won't be affected by this)
-                    const formAvailable = formAvailableCheckbox.checked;
-                    checkFormAvailability(newExpiryDate, formAvailable);
-                } catch (error) {
-                    console.error("Error saving expiry date:", error);
-                    alert("Error: Could not save expiry date.");
-                }
-            }
-
-            /**
-             * Handles form availability checkbox change.
-             */
-            async function handleFormAvailableChange() {
-                const isAvailable = formAvailableCheckbox.checked;
-                
-                try {
-                    await setDoc(doc(db, ADMIN_SETTINGS_DOC), { 
-                        formAvailable: isAvailable
-                    }, { merge: true });
-                    
-                    console.log(`Form availability set to ${isAvailable}`);
-                    
-                    // Check and update form availability (admin won't be affected by this)
-                    const expiryDate = expiryDateInput.value;
-                    checkFormAvailability(expiryDate, isAvailable);
-                } catch (error) {
-                    console.error("Error saving form availability:", error);
-                    alert("Error: Could not save form availability setting.");
-                    // Revert checkbox on error
-                    formAvailableCheckbox.checked = !isAvailable;
                 }
             }
 
@@ -2039,8 +1816,6 @@
             
             saveTitleButton.addEventListener('click', handleSaveTitle);
             saveDateButton.addEventListener('click', handleSaveDate);
-            saveExpiryButton.addEventListener('click', handleSaveExpiry);
-            formAvailableCheckbox.addEventListener('change', handleFormAvailableChange);
             resetFeedbackButton.addEventListener('click', resetAllFeedback);
             downloadPdfButton.addEventListener('click', handleDownloadPdf);
             

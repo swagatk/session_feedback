@@ -97,6 +97,12 @@
                     (No submissions yet)
                 </div>
 
+                <div id="selected-survey-display" class="text-center text-sm text-gray-500 mt-4 hidden"></div>
+                <div id="survey-history-container" class="mt-6">
+                    <h3 class="text-lg font-semibold text-gray-800 text-left">Survey History</h3>
+                    <div id="survey-history-list" class="mt-3 space-y-2"></div>
+                </div>
+
                 <!-- Feedback Table -->
                 <div class="mt-8 flow-root">
                     <div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
@@ -397,6 +403,9 @@
             let feedbackListener = null; // To hold the onSnapshot unsubscribe function
             let titleListener = null; // To hold the onSnapshot unsubscribe function
             let adminSettings = { recoveryEmail: '' }; // Admin settings for recovery email
+            let adminSelectedSurveyId = null; // Currently selected survey for admin view
+            let adminSelectedSurveyName = '';
+            const surveyMetadataById = new Map();
 
             // --- SELECTORS ---
             const adminButton = document.getElementById('admin-button');
@@ -424,6 +433,8 @@
             const logoutButton = document.getElementById('logout-button');
             const overallRatingDisplay = document.getElementById('overall-rating-display');
             const ratingCount = document.getElementById('rating-count');
+            const selectedSurveyDisplay = document.getElementById('selected-survey-display');
+            const surveyHistoryList = document.getElementById('survey-history-list');
             const adminEmailDisplay = document.getElementById('admin-email-display');
             
             const moduleCodeInput = document.getElementById('module-code-input');
@@ -717,7 +728,7 @@
                     console.log("Firebase services initialized");
 
                     // Set up authentication state listener
-                    onAuthStateChanged(auth, (user) => {
+                    onAuthStateChanged(auth, async (user) => {
                         console.log("Auth state changed:", user ? `User: ${user.email || 'Anonymous'}` : 'No user');
                         currentUser = user;
                         
@@ -742,8 +753,8 @@
                             isAdminLoggedIn = false;
                             adminEmailDisplay.textContent = "Not logged in";
                         }
-                        
-                        updateView();
+
+                        await updateView();
                     });
 
                     // Sign in anonymously for public access (students)
@@ -866,7 +877,7 @@
                 }
             }
 
-            function updateView() {
+            async function updateView() {
                 if (!db) return; // Don't do anything if DB isn't ready
 
                 if (isAdminLoggedIn) {
@@ -874,11 +885,10 @@
                     successMessage.classList.add('hidden');
                     adminPanel.classList.remove('hidden');
                     adminButton.classList.add('hidden');
-                    
-                    // Start admin listeners
-                    listenForFeedback(); 
-                    loadAdminPanelData();
-                    loadSurveys(); // Load active surveys list
+
+                    await loadAdminPanelData();
+                    await loadSurveys(); // Load active surveys list
+                    await loadSurveyHistory();
                 } else {
                     // Stop admin listener
                     if (feedbackListener) {
@@ -886,16 +896,24 @@
                         feedbackListener = null;
                     }
 
-                    // Check if user has already submitted (from localStorage or Firestore)
-                    hasUserSubmitted().then(submitted => {
-                        if (submitted) {
-                            feedbackFormContainer.classList.add('hidden');
-                            successMessage.classList.remove('hidden');
-                        } else {
-                            feedbackFormContainer.classList.remove('hidden');
-                            successMessage.classList.add('hidden');
-                        }
-                    });
+                    adminSelectedSurveyId = null;
+                    adminSelectedSurveyName = '';
+                    if (selectedSurveyDisplay) {
+                        selectedSurveyDisplay.classList.add('hidden');
+                        selectedSurveyDisplay.textContent = '';
+                    }
+                    if (surveyHistoryList) {
+                        surveyHistoryList.innerHTML = '';
+                    }
+
+                    const submitted = await hasUserSubmitted();
+                    if (submitted) {
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                    } else {
+                        feedbackFormContainer.classList.remove('hidden');
+                        successMessage.classList.add('hidden');
+                    }
                     
                     adminPanel.classList.add('hidden');
                     adminButton.classList.remove('hidden');
@@ -929,8 +947,7 @@
                     lectureDateInput.value = lectureDate;
                     
                     // Update admin panel title
-                    const adminTitle = moduleCode ? `${moduleCode}:${lectureDate}<br>Overall Rating<br>-------------------` : "Overall Rating<br>-------------------";
-                    adminPanelTitle.innerHTML = adminTitle;
+                    adminPanelTitle.innerHTML = "Overall Lecture Rating<br>-------------------";
 
                     // Load admin settings (recovery email)
                     const adminDocRef = doc(db, ADMIN_SETTINGS_DOC);
@@ -1030,13 +1047,19 @@
                         surveyItem.className = 'bg-gray-50 p-3 rounded border border-gray-200 mb-2';
                         
                         const surveyLink = `${window.location.origin}${window.location.pathname}?survey=${survey.id}`;
+                        const displayName = survey.displayName || `${survey.moduleCode || 'Survey'}-${survey.lectureDate || 'Date'}`;
+                        const createdAtDate = survey.createdAt ? new Date(survey.createdAt) : null;
+                        const createdDisplay = createdAtDate && !Number.isNaN(createdAtDate.getTime())
+                            ? createdAtDate.toLocaleDateString()
+                            : 'Unknown';
                         
                         surveyItem.innerHTML = `
                             <div class="flex justify-between items-start">
                                 <div class="flex-1">
-                                    <div class="font-medium text-gray-900">${survey.moduleCode}</div>
-                                    <div class="text-sm text-gray-600">Date: ${survey.lectureDate}</div>
-                                    <div class="mt-1 text-xs text-gray-500">Created: ${new Date(survey.createdAt).toLocaleDateString()}</div>
+                                    <div class="font-medium text-gray-900">${displayName}</div>
+                                    <div class="text-sm text-gray-600">Module: ${survey.moduleCode || 'N/A'}</div>
+                                    <div class="text-sm text-gray-600">Date: ${survey.lectureDate || 'N/A'}</div>
+                                    <div class="mt-1 text-xs text-gray-500">Created: ${createdDisplay}</div>
                                     <div class="mt-2 flex items-center gap-2">
                                         <input type="text" readonly value="${surveyLink}" 
                                                class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded bg-white"
@@ -1060,6 +1083,279 @@
                 } catch (error) {
                     console.error("❌ Error loading surveys:", error);
                     surveysList.innerHTML = '<p class="text-red-500 text-sm">Failed to load surveys.</p>';
+                }
+            }
+
+            /**
+             * Builds a consistent base name for a survey using module code and date.
+             */
+            function buildSurveyBaseName(survey) {
+                const modulePart = (survey.moduleCode || 'Survey').trim() || 'Survey';
+                let datePart = '';
+
+                if (survey.lectureDate) {
+                    datePart = survey.lectureDate;
+                } else if (survey.createdAt) {
+                    const parsedDate = new Date(survey.createdAt);
+                    if (!Number.isNaN(parsedDate.getTime())) {
+                        datePart = parsedDate.toISOString().split('T')[0];
+                    }
+                }
+
+                if (!datePart) {
+                    datePart = 'undated';
+                }
+
+                return `${modulePart}-${datePart}`;
+            }
+
+            /**
+             * Updates the summary chip showing which survey is active.
+             */
+            function updateSelectedSurveyDisplay() {
+                if (!selectedSurveyDisplay) {
+                    return;
+                }
+
+                if (!adminSelectedSurveyId || !surveyMetadataById.has(adminSelectedSurveyId)) {
+                    selectedSurveyDisplay.classList.add('hidden');
+                    selectedSurveyDisplay.textContent = '';
+                    return;
+                }
+
+                const metadata = surveyMetadataById.get(adminSelectedSurveyId);
+                const infoParts = [`Viewing: ${metadata.displayName}`];
+                if (metadata.lectureDate) {
+                    infoParts.push(`Date: ${metadata.lectureDate}`);
+                }
+                infoParts.push(metadata.active ? 'Active' : 'Closed');
+
+                selectedSurveyDisplay.textContent = infoParts.join(' | ');
+                selectedSurveyDisplay.classList.remove('hidden');
+            }
+
+            /**
+             * Applies visual styling to the selected survey history entry.
+             */
+            function highlightSurveyHistorySelection() {
+                if (!surveyHistoryList) {
+                    return;
+                }
+
+                const rows = surveyHistoryList.querySelectorAll('[data-survey-id]');
+                rows.forEach((row) => {
+                    const isSelected = adminSelectedSurveyId && row.dataset.surveyId === adminSelectedSurveyId;
+                    row.classList.toggle('border-blue-500', !!isSelected);
+                    row.classList.toggle('bg-blue-50', !!isSelected);
+                    row.classList.toggle('border-gray-200', !isSelected);
+                    row.classList.toggle('bg-gray-50', !isSelected);
+                });
+            }
+
+            /**
+             * Handles survey selection from the history list.
+             */
+            function handleSurveyHistorySelect(surveyId) {
+                if (!surveyId || !surveyMetadataById.has(surveyId)) {
+                    console.warn('Survey metadata not found for selection', surveyId);
+                    return;
+                }
+
+                const metadata = surveyMetadataById.get(surveyId);
+                adminSelectedSurveyId = surveyId;
+                adminSelectedSurveyName = metadata.displayName;
+
+                highlightSurveyHistorySelection();
+                updateSelectedSurveyDisplay();
+                listenForFeedback(adminSelectedSurveyId);
+            }
+
+            /**
+             * Handles deletion of a survey and its submissions.
+             */
+            function handleSurveyHistoryDelete(surveyId) {
+                if (!surveyId) {
+                    return;
+                }
+
+                const metadata = surveyMetadataById.get(surveyId);
+                const surveyLabel = metadata ? metadata.displayName : 'this survey';
+
+                showCustomConfirm(
+                    'Delete Survey?',
+                    `This will delete "${surveyLabel}" and all associated submissions. This action cannot be undone.`,
+                    async () => {
+                        try {
+                            const submissionsQuery = query(
+                                collection(db, SUBMISSIONS_COLLECTION),
+                                where('surveyId', '==', surveyId)
+                            );
+                            const submissionsSnapshot = await getDocs(submissionsQuery);
+                            const deletionJobs = submissionsSnapshot.docs.map((docSnap) => deleteDoc(docSnap.ref));
+                            if (deletionJobs.length > 0) {
+                                await Promise.all(deletionJobs);
+                            }
+
+                            await deleteDoc(doc(db, SURVEYS_COLLECTION, surveyId));
+
+                            if (adminSelectedSurveyId === surveyId) {
+                                adminSelectedSurveyId = null;
+                                adminSelectedSurveyName = '';
+                            }
+
+                            await loadSurveyHistory();
+                            await loadSurveys();
+                        } catch (error) {
+                            console.error('Error deleting survey:', error);
+                            alert('Failed to delete survey: ' + error.message);
+                        }
+                    },
+                    'Delete'
+                );
+            }
+
+            /**
+             * Creates a DOM node for a survey history entry.
+             */
+            function createSurveyHistoryRow(metadata) {
+                const row = document.createElement('div');
+                row.className = 'flex items-center gap-3 border border-gray-200 rounded-lg px-3 py-2 bg-gray-50';
+                row.dataset.surveyId = metadata.id;
+
+                const selectButton = document.createElement('button');
+                selectButton.type = 'button';
+                selectButton.className = 'flex-1 text-left text-sm font-medium text-gray-700 hover:text-blue-600 focus:outline-none';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'block';
+                titleSpan.textContent = metadata.displayName;
+
+                const detailsSpan = document.createElement('span');
+                detailsSpan.className = 'block text-xs text-gray-500';
+                const detailParts = [];
+                if (metadata.moduleCode) {
+                    detailParts.push(metadata.moduleCode);
+                }
+                if (metadata.lectureDate) {
+                    detailParts.push(metadata.lectureDate);
+                }
+                detailParts.push(metadata.active ? 'Active' : 'Closed');
+                detailsSpan.textContent = detailParts.join(' | ');
+
+                selectButton.appendChild(titleSpan);
+                selectButton.appendChild(detailsSpan);
+                selectButton.addEventListener('click', () => handleSurveyHistorySelect(metadata.id));
+
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'px-2 py-1 text-xs text-red-600 border border-red-200 rounded hover:bg-red-50';
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    handleSurveyHistoryDelete(metadata.id);
+                });
+
+                row.appendChild(selectButton);
+                row.appendChild(deleteButton);
+
+                return row;
+            }
+
+            /**
+             * Loads survey history entries for the admin view.
+             */
+            async function loadSurveyHistory() {
+                if (!db || !surveyHistoryList) {
+                    return;
+                }
+
+                surveyHistoryList.innerHTML = '<p class="text-sm text-gray-500">Loading surveys...</p>';
+
+                try {
+                    const snapshot = await getDocs(collection(db, SURVEYS_COLLECTION));
+                    const surveys = [];
+                    snapshot.forEach((docSnap) => {
+                        const data = docSnap.data();
+                        surveys.push({
+                            id: docSnap.id,
+                            ...data
+                        });
+                    });
+
+                    if (surveys.length === 0) {
+                        surveyHistoryList.innerHTML = '<p class="text-sm text-gray-500">No surveys created yet.</p>';
+                        adminSelectedSurveyId = null;
+                        adminSelectedSurveyName = '';
+                        updateSelectedSurveyDisplay();
+                        listenForFeedback(null);
+                        return;
+                    }
+
+                    const ascending = [...surveys].sort((a, b) => {
+                        const aTime = Date.parse(a.createdAt || '') || 0;
+                        const bTime = Date.parse(b.createdAt || '') || 0;
+                        return aTime - bTime;
+                    });
+
+                    const computedNames = new Map();
+                    const groupCounters = new Map();
+                    const displayNameUpdates = [];
+
+                    ascending.forEach((survey) => {
+                        const baseName = buildSurveyBaseName(survey);
+                        const counter = groupCounters.get(baseName) || 0;
+                        let displayName = survey.displayName;
+
+                        if (!displayName) {
+                            displayName = counter === 0 ? baseName : `${baseName}-${counter}`;
+                            displayNameUpdates.push(
+                                setDoc(doc(db, SURVEYS_COLLECTION, survey.id), { displayName }, { merge: true })
+                            );
+                        }
+
+                        groupCounters.set(baseName, counter + 1);
+                        computedNames.set(survey.id, displayName);
+                    });
+
+                    if (displayNameUpdates.length > 0) {
+                        await Promise.allSettled(displayNameUpdates);
+                    }
+
+                    const descending = [...surveys].sort((a, b) => {
+                        const aTime = Date.parse(a.createdAt || '') || 0;
+                        const bTime = Date.parse(b.createdAt || '') || 0;
+                        return bTime - aTime;
+                    });
+
+                    surveyMetadataById.clear();
+                    surveyHistoryList.innerHTML = '';
+
+                    descending.forEach((survey) => {
+                        const displayName = computedNames.get(survey.id) || buildSurveyBaseName(survey);
+                        const metadata = {
+                            id: survey.id,
+                            displayName,
+                            moduleCode: survey.moduleCode || '',
+                            lectureDate: survey.lectureDate || '',
+                            active: survey.active !== false,
+                            createdAt: survey.createdAt || ''
+                        };
+                        surveyMetadataById.set(survey.id, metadata);
+                        surveyHistoryList.appendChild(createSurveyHistoryRow(metadata));
+                    });
+
+                    if (!adminSelectedSurveyId || !surveyMetadataById.has(adminSelectedSurveyId)) {
+                        const firstSurvey = descending[0];
+                        adminSelectedSurveyId = firstSurvey.id;
+                        adminSelectedSurveyName = computedNames.get(firstSurvey.id) || buildSurveyBaseName(firstSurvey);
+                    }
+
+                    highlightSurveyHistorySelection();
+                    updateSelectedSurveyDisplay();
+                    listenForFeedback(adminSelectedSurveyId);
+                } catch (error) {
+                    console.error('Error loading survey history:', error);
+                    surveyHistoryList.innerHTML = '<p class="text-sm text-red-500">Failed to load survey history.</p>';
                 }
             }
 
@@ -1114,14 +1410,31 @@
              * Listens for feedback data from Firestore and updates the admin panel.
              * Now listens to the new survey-submissions collection.
              */
-            function listenForFeedback() {
-                if (feedbackListener) feedbackListener(); // Unsubscribe from old listener
+            function listenForFeedback(selectedSurveyId) {
+                if (feedbackListener) {
+                    feedbackListener(); // Unsubscribe from old listener
+                    feedbackListener = null;
+                }
 
-                const q = query(collection(db, SUBMISSIONS_COLLECTION));
-                feedbackListener = onSnapshot(q, (querySnapshot) => {
+                if (!db) {
+                    return;
+                }
+
+                if (!selectedSurveyId) {
+                    overallRatingDisplay.textContent = '-- / 5.0';
+                    ratingCount.textContent = '(Select a survey to view results)';
+                    renderFeedbackTable([]);
+                    return;
+                }
+
+                const feedbackQuery = query(
+                    collection(db, SUBMISSIONS_COLLECTION),
+                    where('surveyId', '==', selectedSurveyId)
+                );
+                feedbackListener = onSnapshot(feedbackQuery, (querySnapshot) => {
                     const feedback = [];
-                    querySnapshot.forEach((doc) => {
-                        feedback.push(doc.data());
+                    querySnapshot.forEach((docSnap) => {
+                        feedback.push(docSnap.data());
                     });
                     
                     calculateOverallRating(feedback);

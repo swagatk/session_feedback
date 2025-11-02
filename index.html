@@ -303,8 +303,8 @@
                             </div>
                             
                             <!-- Download Timestamp (for PDF) -->
-                            <div id="pdf-footer" class="print-only mt-6 text-center text-sm text-gray-500 border-t-2 border-gray-300 pt-4" style="display: none;">
-                                <p id="pdf-download-time"></p>
+                            <div id="pdf-footer" class="print-only mt-8 mb-4 text-center text-base text-gray-600 border-t-2 border-gray-300 pt-6 pb-2" style="display: none;">
+                                <p id="pdf-download-time" class="font-medium"></p>
                             </div>
                         </div>
                         
@@ -2875,30 +2875,32 @@
                     
                     const imgData = canvas.toDataURL('image/png');
                     
-                    // Calculate PDF dimensions - use A4 with margins
+                    // Use A4 Portrait format with margins
                     const pdfWidth = 210; // A4 width in mm
                     const pdfHeight = 297; // A4 height in mm
-                    const margin = 15; // 15mm margins
+                    const margin = 15; // 15mm margins on all sides
+                    const footerHeight = 15; // Reserve space for footer
                     const contentWidth = pdfWidth - (margin * 2);
-                    const contentHeight = pdfHeight - (margin * 2);
+                    const contentHeight = pdfHeight - (margin * 2) - footerHeight; // Account for footer
                     
-                    // Calculate scale to fit content within page
+                    // Calculate scale to fit content within available space
                     const imgWidth = canvas.width;
                     const imgHeight = canvas.height;
                     const scaleX = contentWidth / (imgWidth * 0.264583); // Convert px to mm
                     const scaleY = contentHeight / (imgHeight * 0.264583);
-                    const scale = Math.min(scaleX, scaleY, 1); // Don't upscale
+                    const scale = Math.min(scaleX, scaleY, 0.95); // Cap at 95% to ensure margins
                     
                     const scaledWidth = (imgWidth * 0.264583) * scale;
                     const scaledHeight = (imgHeight * 0.264583) * scale;
                     
+                    // Always use portrait orientation for A4
                     const pdf = new jsPDF({
-                        orientation: scaledHeight > scaledWidth ? 'portrait' : 'landscape',
+                        orientation: 'portrait',
                         unit: 'mm',
                         format: 'a4'
                     });
                     
-                    // Center the content on the page
+                    // Center the content horizontally and start from top margin
                     const x = (pdfWidth - scaledWidth) / 2;
                     const y = margin;
                     

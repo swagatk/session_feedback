@@ -1949,20 +1949,16 @@
              */
             function generateDynamicForm(surveyData) {
                 const form = document.getElementById('feedback-form');
-                const submitButton = form.querySelector('button[type="submit"]');
                 
-                // Clear existing dynamic content (keep only the submit button)
-                while (form.firstChild && form.firstChild !== submitButton) {
-                    form.removeChild(form.firstChild);
-                }
+                // Find and preserve the submit button container (the last div)
+                const submitButtonContainer = form.querySelector('div:last-child');
+                
+                // Clear all existing content
+                form.innerHTML = '';
                 
                 // Use default fields if custom fields not defined
                 const ratingFields = surveyData.ratingFields || ['Clarity of Content', 'Engagement', 'Pace of the Lecture'];
                 const commentFields = surveyData.commentFields || ['What went well? (Positive Feedback)', 'What could be improved? (Constructive Feedback)'];
-                
-                // Create container for all fields
-                const formContent = document.createElement('div');
-                formContent.className = 'space-y-6';
                 
                 // Generate star rating fields
                 if (ratingFields.length > 0) {
@@ -1985,7 +1981,7 @@
                         ratingsContainer.appendChild(ratingDiv);
                     });
                     
-                    formContent.appendChild(ratingsContainer);
+                    form.appendChild(ratingsContainer);
                 }
                 
                 // Generate comment fields
@@ -2003,11 +1999,17 @@
                         commentsContainer.appendChild(commentDiv);
                     });
                     
-                    formContent.appendChild(commentsContainer);
+                    form.appendChild(commentsContainer);
                 }
                 
-                // Insert before submit button
-                form.insertBefore(formContent, submitButton);
+                // Re-create submit button container
+                const submitDiv = document.createElement('div');
+                submitDiv.innerHTML = `
+                    <button type="submit" class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-600 py-3 px-4 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                        Submit Feedback
+                    </button>
+                `;
+                form.appendChild(submitDiv);
             }
 
             /**

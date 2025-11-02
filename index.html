@@ -156,6 +156,82 @@
                             </div>
                         </div>
                         
+                        <!-- Form Field Customization -->
+                        <div class="mb-4 border-t border-gray-200 pt-4">
+                            <h4 class="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                                Customize Form Fields
+                            </h4>
+                            
+                            <!-- Rating Fields -->
+                            <div class="mb-3">
+                                <label class="block text-xs font-medium text-gray-600 mb-2">Star Rating Fields (up to 5)</label>
+                                <div id="rating-fields-container" class="space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" class="rating-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., Clarity of Content" value="Clarity of Content">
+                                        <button type="button" class="remove-rating-btn text-red-600 hover:text-red-800 p-1 hidden">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" class="rating-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., Engagement" value="Engagement">
+                                        <button type="button" class="remove-rating-btn text-red-600 hover:text-red-800 p-1 hidden">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" class="rating-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., Pace of the Lecture" value="Pace of the Lecture">
+                                        <button type="button" class="remove-rating-btn text-red-600 hover:text-red-800 p-1 hidden">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" id="add-rating-field-btn" class="mt-2 text-xs text-green-700 hover:text-green-900 font-medium flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Rating Field
+                                </button>
+                            </div>
+                            
+                            <!-- Comment Fields -->
+                            <div>
+                                <label class="block text-xs font-medium text-gray-600 mb-2">Comment Fields (up to 3)</label>
+                                <div id="comment-fields-container" class="space-y-2">
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" class="comment-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., What went well?" value="What went well? (Positive Feedback)">
+                                        <button type="button" class="remove-comment-btn text-red-600 hover:text-red-800 p-1 hidden">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <input type="text" class="comment-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., What could be improved?" value="What could be improved? (Constructive Feedback)">
+                                        <button type="button" class="remove-comment-btn text-red-600 hover:text-red-800 p-1 hidden">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <button type="button" id="add-comment-field-btn" class="mt-2 text-xs text-green-700 hover:text-green-900 font-medium flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                    </svg>
+                                    Add Comment Field
+                                </button>
+                            </div>
+                        </div>
+                        
                         <button id="create-survey-button" class="w-full inline-flex justify-center items-center px-4 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 shadow-md">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -1121,6 +1197,120 @@
             }
 
             /**
+             * Gets the current custom field configuration from the UI.
+             */
+            function getCustomFields() {
+                const ratingInputs = document.querySelectorAll('.rating-field-input');
+                const commentInputs = document.querySelectorAll('.comment-field-input');
+                
+                const ratingFields = Array.from(ratingInputs)
+                    .map(input => input.value.trim())
+                    .filter(val => val !== '');
+                
+                const commentFields = Array.from(commentInputs)
+                    .map(input => input.value.trim())
+                    .filter(val => val !== '');
+                
+                return { ratingFields, commentFields };
+            }
+
+            /**
+             * Adds a new rating field input.
+             */
+            function addRatingField() {
+                const container = document.getElementById('rating-fields-container');
+                const currentCount = container.querySelectorAll('.rating-field-input').length;
+                
+                if (currentCount >= 5) {
+                    alert('Maximum 5 rating fields allowed.');
+                    return;
+                }
+                
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'flex items-center gap-2';
+                fieldDiv.innerHTML = `
+                    <input type="text" class="rating-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., Teaching Quality">
+                    <button type="button" class="remove-rating-btn text-red-600 hover:text-red-800 p-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(fieldDiv);
+                updateRemoveButtons();
+            }
+
+            /**
+             * Adds a new comment field input.
+             */
+            function addCommentField() {
+                const container = document.getElementById('comment-fields-container');
+                const currentCount = container.querySelectorAll('.comment-field-input').length;
+                
+                if (currentCount >= 3) {
+                    alert('Maximum 3 comment fields allowed.');
+                    return;
+                }
+                
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'flex items-center gap-2';
+                fieldDiv.innerHTML = `
+                    <input type="text" class="comment-field-input flex-1 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 text-sm" placeholder="e.g., Additional comments?">
+                    <button type="button" class="remove-comment-btn text-red-600 hover:text-red-800 p-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(fieldDiv);
+                updateRemoveButtons();
+            }
+
+            /**
+             * Initializes remove button listeners for field customization.
+             */
+            function initializeFieldRemovalButtons() {
+                updateRemoveButtons();
+            }
+
+            /**
+             * Updates visibility and functionality of remove buttons.
+             */
+            function updateRemoveButtons() {
+                // Rating fields
+                const ratingContainer = document.getElementById('rating-fields-container');
+                const ratingFields = ratingContainer.querySelectorAll('.flex.items-center');
+                ratingFields.forEach((field, index) => {
+                    const removeBtn = field.querySelector('.remove-rating-btn');
+                    if (ratingFields.length <= 1) {
+                        removeBtn.classList.add('hidden');
+                    } else {
+                        removeBtn.classList.remove('hidden');
+                        removeBtn.onclick = () => {
+                            field.remove();
+                            updateRemoveButtons();
+                        };
+                    }
+                });
+                
+                // Comment fields
+                const commentContainer = document.getElementById('comment-fields-container');
+                const commentFields = commentContainer.querySelectorAll('.flex.items-center');
+                commentFields.forEach((field, index) => {
+                    const removeBtn = field.querySelector('.remove-comment-btn');
+                    if (commentFields.length <= 1) {
+                        removeBtn.classList.add('hidden');
+                    } else {
+                        removeBtn.classList.remove('hidden');
+                        removeBtn.onclick = () => {
+                            field.remove();
+                            updateRemoveButtons();
+                        };
+                    }
+                });
+            }
+
+            /**
              * Creates a new survey and generates a unique link.
              */
             async function createSurvey() {
@@ -1140,6 +1330,15 @@
                     
                     const surveyId = generateSurveyId();
                     
+                    // Get custom fields configuration
+                    const customFields = getCustomFields();
+                    
+                    // Validate that at least one rating field exists
+                    if (customFields.ratingFields.length === 0) {
+                        alert("Please add at least one rating field.");
+                        return;
+                    }
+                    
                     // Create survey document
                     const surveyData = {
                         id: surveyId,
@@ -1147,11 +1346,13 @@
                         lectureDate: lectureDate,
                         createdAt: new Date().toISOString(),
                         createdBy: currentUser.email,
-                        active: true
+                        active: true,
+                        ratingFields: customFields.ratingFields,
+                        commentFields: customFields.commentFields
                     };
                     
                     await setDoc(doc(db, SURVEYS_COLLECTION, surveyId), surveyData);
-                    console.log("✅ Survey created:", surveyId);
+                    console.log("✅ Survey created:", surveyId, "with custom fields:", customFields);
                     
                     // Reload surveys list and history
                     await loadSurveys();
@@ -1607,27 +1808,33 @@
                 if (!selectedSurveyId) {
                     overallRatingDisplay.textContent = '-- / 5.0';
                     ratingCount.textContent = '(Select a survey to view results)';
-                    renderFeedbackTable([]);
+                    renderFeedbackTable([], null);
                     return;
                 }
-
-                const feedbackQuery = query(
-                    collection(db, SUBMISSIONS_COLLECTION),
-                    where('surveyId', '==', selectedSurveyId)
-                );
-                feedbackListener = onSnapshot(feedbackQuery, (querySnapshot) => {
-                    const feedback = [];
-                    querySnapshot.forEach((docSnap) => {
-                        feedback.push(docSnap.data());
+                
+                // First, get the survey configuration to know the field structure
+                const surveyDocRef = doc(db, SURVEYS_COLLECTION, selectedSurveyId);
+                getDoc(surveyDocRef).then(surveySnap => {
+                    const surveyData = surveySnap.exists() ? surveySnap.data() : null;
+                    
+                    const feedbackQuery = query(
+                        collection(db, SUBMISSIONS_COLLECTION),
+                        where('surveyId', '==', selectedSurveyId)
+                    );
+                    feedbackListener = onSnapshot(feedbackQuery, (querySnapshot) => {
+                        const feedback = [];
+                        querySnapshot.forEach((docSnap) => {
+                            feedback.push(docSnap.data());
+                        });
+                        
+                        console.log(`📊 Feedback listener received ${feedback.length} submissions for survey ${selectedSurveyId}`);
+                        
+                        calculateOverallRating(feedback);
+                        renderFeedbackTable(feedback, surveyData);
+                    }, (error) => {
+                        console.error("Error listening for feedback:", error);
+                        displayError("Listener Error", "Could not get feedback data.");
                     });
-                    
-                    console.log(`📊 Feedback listener received ${feedback.length} submissions for survey ${selectedSurveyId}`);
-                    
-                    calculateOverallRating(feedback);
-                    renderFeedbackTable(feedback);
-                }, (error) => {
-                    console.error("Error listening for feedback:", error);
-                    displayError("Listener Error", "Could not get feedback data.");
                 });
             }
 
@@ -1692,6 +1899,10 @@
                     // Show the form with survey details
                     console.log("🆕 All checks passed - showing feedback form");
                     formTitle.innerHTML = `${surveyData.moduleCode}:${surveyData.lectureDate}<br>Submit your feedback`;
+                    
+                    // Generate dynamic form based on custom fields
+                    generateDynamicForm(surveyData);
+                    
                     feedbackFormContainer.classList.remove('hidden');
                     successMessage.classList.add('hidden');
                     
@@ -1701,6 +1912,72 @@
                     console.error("Error initializing survey:", error);
                     displayError("Error", "Could not load survey. Please try again later.");
                 }
+            }
+
+            /**
+             * Generates dynamic form fields based on survey configuration.
+             */
+            function generateDynamicForm(surveyData) {
+                const form = document.getElementById('feedback-form');
+                const submitButton = form.querySelector('button[type="submit"]');
+                
+                // Clear existing dynamic content (keep only the submit button)
+                while (form.firstChild && form.firstChild !== submitButton) {
+                    form.removeChild(form.firstChild);
+                }
+                
+                // Use default fields if custom fields not defined
+                const ratingFields = surveyData.ratingFields || ['Clarity of Content', 'Engagement', 'Pace of the Lecture'];
+                const commentFields = surveyData.commentFields || ['What went well? (Positive Feedback)', 'What could be improved? (Constructive Feedback)'];
+                
+                // Create container for all fields
+                const formContent = document.createElement('div');
+                formContent.className = 'space-y-6';
+                
+                // Generate star rating fields
+                if (ratingFields.length > 0) {
+                    const ratingsContainer = document.createElement('div');
+                    ratingsContainer.className = 'rounded-md shadow-sm space-y-4 p-6 border border-gray-200';
+                    
+                    ratingFields.forEach((fieldLabel, index) => {
+                        const fieldId = `rating_${index}`;
+                        const ratingDiv = document.createElement('div');
+                        ratingDiv.innerHTML = `
+                            <label class="block text-lg font-medium text-gray-800">${fieldLabel}</label>
+                            <div class="star-rating">
+                                <input type="radio" id="${fieldId}_5" name="${fieldId}" value="5" required><label for="${fieldId}_5">&#9733;</label>
+                                <input type="radio" id="${fieldId}_4" name="${fieldId}" value="4"><label for="${fieldId}_4">&#9733;</label>
+                                <input type="radio" id="${fieldId}_3" name="${fieldId}" value="3"><label for="${fieldId}_3">&#9733;</label>
+                                <input type="radio" id="${fieldId}_2" name="${fieldId}" value="2"><label for="${fieldId}_2">&#9733;</label>
+                                <input type="radio" id="${fieldId}_1" name="${fieldId}" value="1"><label for="${fieldId}_1">&#9733;</label>
+                            </div>
+                        `;
+                        ratingsContainer.appendChild(ratingDiv);
+                    });
+                    
+                    formContent.appendChild(ratingsContainer);
+                }
+                
+                // Generate comment fields
+                if (commentFields.length > 0) {
+                    const commentsContainer = document.createElement('div');
+                    commentsContainer.className = 'space-y-4';
+                    
+                    commentFields.forEach((fieldLabel, index) => {
+                        const fieldId = `comment_${index}`;
+                        const commentDiv = document.createElement('div');
+                        commentDiv.innerHTML = `
+                            <label for="${fieldId}" class="block text-sm font-medium text-gray-700">${fieldLabel}</label>
+                            <textarea id="${fieldId}" name="${fieldId}" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"></textarea>
+                        `;
+                        commentsContainer.appendChild(commentDiv);
+                    });
+                    
+                    formContent.appendChild(commentsContainer);
+                }
+                
+                // Insert before submit button
+                form.insertBefore(formContent, submitButton);
             }
 
             /**
@@ -1846,17 +2123,70 @@
             /**
              * Renders the feedback data into the admin table.
              */
-            function renderFeedbackTable(feedback) {
+            function renderFeedbackTable(feedback, surveyData) {
                 const tableBody = document.getElementById('feedback-table-body');
-                if (!tableBody) {
-                    console.error("Feedback table body not found!");
+                const feedbackTable = tableBody?.closest('table');
+                const tableHead = feedbackTable?.querySelector('thead tr');
+                
+                if (!tableBody || !tableHead) {
+                    console.error("Feedback table elements not found!");
                     return;
                 }
                 
-                tableBody.innerHTML = ''; // Clear existing table
+                // Determine field structure (use survey config or infer from data)
+                let ratingFields = [];
+                let commentFields = [];
+                
+                if (surveyData && surveyData.ratingFields) {
+                    ratingFields = surveyData.ratingFields;
+                    commentFields = surveyData.commentFields || [];
+                } else if (feedback.length > 0) {
+                    // Infer from first feedback entry (for backward compatibility)
+                    const firstEntry = feedback[0];
+                    if (firstEntry.ratings) {
+                        ratingFields = Object.keys(firstEntry.ratings);
+                        commentFields = Object.keys(firstEntry.comments || {});
+                    } else {
+                        // Legacy format
+                        ratingFields = ['Clarity', 'Engagement', 'Pace'];
+                        commentFields = ['Positive', 'Negative'];
+                    }
+                } else {
+                    // Default fields
+                    ratingFields = ['Clarity', 'Engagement', 'Pace'];
+                    commentFields = ['Positive', 'Negative'];
+                }
+                
+                // Update table header
+                tableHead.innerHTML = '';
+                ratingFields.forEach(field => {
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+                    th.className = 'py-3 px-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider';
+                    th.textContent = field.length > 15 ? field.substring(0, 12) + '...' : field;
+                    th.title = field; // Show full text on hover
+                    tableHead.appendChild(th);
+                });
+                commentFields.forEach(field => {
+                    const th = document.createElement('th');
+                    th.scope = 'col';
+                    th.className = 'py-3 px-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider';
+                    th.textContent = field.length > 15 ? field.substring(0, 12) + '...' : field;
+                    th.title = field; // Show full text on hover
+                    tableHead.appendChild(th);
+                });
+                const thTime = document.createElement('th');
+                thTime.scope = 'col';
+                thTime.className = 'py-3 px-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider';
+                thTime.textContent = 'Submitted';
+                tableHead.appendChild(thTime);
+                
+                // Clear existing table body
+                tableBody.innerHTML = '';
                 
                 if (feedback.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No feedback submitted yet.</td></tr>';
+                    const colspan = ratingFields.length + commentFields.length + 1;
+                    tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4 text-gray-500">No feedback submitted yet.</td></tr>`;
                     return;
                 }
 
@@ -1871,14 +2201,46 @@
                     const row = document.createElement('tr');
                     const submittedDate = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : 'Just now';
                     
-                    row.innerHTML = `
-                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.clarity}</td>
-                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.engagement}</td>
-                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${entry.pace}</td>
-                        <td class="py-4 px-4 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words">${entry.positive || ''}</td>
-                        <td class="py-4 px-4 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words">${entry.negative || ''}</td>
-                        <td class="whitespace-nowrap py-4 px-4 text-sm text-gray-500">${submittedDate}</td>
-                    `;
+                    // Add rating cells
+                    ratingFields.forEach(field => {
+                        const td = document.createElement('td');
+                        td.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
+                        if (entry.ratings && entry.ratings[field] !== undefined) {
+                            td.textContent = entry.ratings[field];
+                        } else if (field === 'Clarity' && entry.clarity !== undefined) {
+                            td.textContent = entry.clarity; // Legacy support
+                        } else if (field === 'Engagement' && entry.engagement !== undefined) {
+                            td.textContent = entry.engagement;
+                        } else if (field === 'Pace' && entry.pace !== undefined) {
+                            td.textContent = entry.pace;
+                        } else {
+                            td.textContent = '-';
+                        }
+                        row.appendChild(td);
+                    });
+                    
+                    // Add comment cells
+                    commentFields.forEach(field => {
+                        const td = document.createElement('td');
+                        td.className = 'py-4 px-3 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words';
+                        if (entry.comments && entry.comments[field]) {
+                            td.textContent = entry.comments[field];
+                        } else if (field === 'Positive' && entry.positive) {
+                            td.textContent = entry.positive; // Legacy support
+                        } else if (field === 'Negative' && entry.negative) {
+                            td.textContent = entry.negative;
+                        } else {
+                            td.textContent = '';
+                        }
+                        row.appendChild(td);
+                    });
+                    
+                    // Add timestamp cell
+                    const tdTime = document.createElement('td');
+                    tdTime.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
+                    tdTime.textContent = submittedDate;
+                    row.appendChild(tdTime);
+                    
                     tableBody.appendChild(row);
                 });
             }
@@ -1902,12 +2264,44 @@
                         // --- This runs if user clicks "Confirm" ---
                         try {
                             console.log("Starting feedback submission for survey:", currentSurveyId);
-                            const formData = new FormData(feedbackForm);
-                            const clarity = parseFloat(formData.get('clarity'));
-                            const engagement = parseFloat(formData.get('engagement'));
-                            const pace = parseFloat(formData.get('pace'));
                             
-                            console.log("Form ratings:", { clarity, engagement, pace });
+                            // Get survey data to know field structure
+                            const surveyDocRef = doc(db, SURVEYS_COLLECTION, currentSurveyId);
+                            const surveySnap = await getDoc(surveyDocRef);
+                            const surveyData = surveySnap.data();
+                            
+                            const formData = new FormData(feedbackForm);
+                            
+                            // Collect ratings dynamically
+                            const ratings = {};
+                            const ratingFields = surveyData.ratingFields || ['Clarity of Content', 'Engagement', 'Pace of the Lecture'];
+                            let ratingSum = 0;
+                            let ratingCount = 0;
+                            
+                            ratingFields.forEach((fieldLabel, index) => {
+                                const fieldId = `rating_${index}`;
+                                const value = parseFloat(formData.get(fieldId));
+                                if (!isNaN(value)) {
+                                    ratings[fieldLabel] = value;
+                                    ratingSum += value;
+                                    ratingCount++;
+                                }
+                            });
+                            
+                            // Collect comments dynamically
+                            const comments = {};
+                            const commentFields = surveyData.commentFields || ['What went well? (Positive Feedback)', 'What could be improved? (Constructive Feedback)'];
+                            
+                            commentFields.forEach((fieldLabel, index) => {
+                                const fieldId = `comment_${index}`;
+                                const value = formData.get(fieldId);
+                                if (value) {
+                                    comments[fieldLabel] = value;
+                                }
+                            });
+                            
+                            console.log("Form ratings:", ratings);
+                            console.log("Form comments:", comments);
                             
                             // Get submission token for this survey
                             const token = await getOrCreateSurveyToken(currentSurveyId);
@@ -1921,19 +2315,18 @@
                             const fingerprint = await generateBrowserFingerprint();
                             console.log("Device fingerprint:", fingerprint);
                             
+                            const average = ratingCount > 0 ? ratingSum / ratingCount : 0;
+                            
                             const newSubmission = {
                                 surveyId: currentSurveyId,
                                 token: token,
-                                deviceId: deviceId, // Store device ID for cross-browser detection
-                                fingerprint: fingerprint, // Store fingerprint for cross-browser detection
-                                clarity,
-                                engagement,
-                                pace,
-                                positive: formData.get('positive-comments'),
-                                negative: formData.get('negative-comments'),
-                                average: (clarity + engagement + pace) / 3,
+                                deviceId: deviceId,
+                                fingerprint: fingerprint,
+                                ratings: ratings, // Dynamic ratings object
+                                comments: comments, // Dynamic comments object
+                                average: average,
                                 timestamp: serverTimestamp(),
-                                userId: currentUser ? currentUser.uid : null // For analytics only
+                                userId: currentUser ? currentUser.uid : null
                             };
 
                             const submissionDocRef = getSubmissionDocRef(currentSurveyId, token);
@@ -2596,6 +2989,19 @@
             if (createSurveyButton) {
                 createSurveyButton.addEventListener('click', createSurvey);
             }
+            
+            // Field customization event listeners
+            const addRatingFieldBtn = document.getElementById('add-rating-field-btn');
+            const addCommentFieldBtn = document.getElementById('add-comment-field-btn');
+            if (addRatingFieldBtn) {
+                addRatingFieldBtn.addEventListener('click', addRatingField);
+            }
+            if (addCommentFieldBtn) {
+                addCommentFieldBtn.addEventListener('click', addCommentField);
+            }
+            
+            // Initialize remove button listeners
+            initializeFieldRemovalButtons();
             
             // Confirmation modal buttons
             if (confirmCancelButton) {

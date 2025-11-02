@@ -842,42 +842,6 @@
             /**
              * Shows or hides UI elements based on admin login status.
              */
-            /**
-             * Checks if the current user has already submitted feedback.
-             */
-            async function hasUserSubmitted() {
-                // First check localStorage for quick response
-                if (localStorage.getItem(SUBMITTED_KEY)) {
-                    return true;
-                }
-                
-                // Then check Firestore using sessionId (persists across browser sessions)
-                if (!db) {
-                    return false;
-                }
-                
-                try {
-                    const sessionId = getOrCreateSessionId();
-                    const q = query(
-                        collection(db, FEEDBACK_COLLECTION),
-                        where('sessionId', '==', sessionId)
-                    );
-                    const querySnapshot = await getDocs(q);
-                    
-                    if (!querySnapshot.empty) {
-                        // This browser session has submitted before, update localStorage
-                        localStorage.setItem(SUBMITTED_KEY, 'true');
-                        console.log("Found existing submission for session:", sessionId);
-                        return true;
-                    }
-                    return false;
-                } catch (error) {
-                    console.error("Error checking if user submitted:", error);
-                    // On error, fall back to localStorage only
-                    return localStorage.getItem(SUBMITTED_KEY) !== null;
-                }
-            }
-
             async function updateView() {
                 if (!db) return; // Don't do anything if DB isn't ready
 
@@ -907,11 +871,8 @@
                         surveyHistoryList.innerHTML = '';
                     }
 
-                    const submitted = await hasUserSubmitted();
-                    if (submitted) {
-                        feedbackFormContainer.classList.add('hidden');
-                        successMessage.classList.remove('hidden');
-                    } else {
+                    // For students, always show the form if not on a survey page
+                    if (!currentSurveyId) {
                         feedbackFormContainer.classList.remove('hidden');
                         successMessage.classList.add('hidden');
                     }
@@ -1073,7 +1034,7 @@
                                         <input type="text" readonly value="${surveyLink}" 
                                                class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded bg-white"
                                                onclick="this.select()">
-                                        <button onclick="copySurveyLink('${surveyLink}')" 
+                                        <button onclick="copySurveyLink('${surveyLink}', event)" 
                                                 class="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">
                                             Copy Link
                                         </button>
@@ -1394,12 +1355,17 @@
             /**
              * Copies survey link to clipboard.
              */
-            window.copySurveyLink = async function(link) {
+            window.copySurveyLink = async function(link, evt) {
                 try {
                     await navigator.clipboard.writeText(link);
                     
                     // Show temporary success message
-                    const button = event.target;
+                    const button = evt ? evt.target : event.target;
+                    if (!button) {
+                        alert("Link copied to clipboard!");
+                        return;
+                    }
+                    
                     const originalText = button.textContent;
                     button.textContent = 'Copied!';
                     button.classList.remove('bg-blue-500', 'hover:bg-blue-600');
@@ -1567,6 +1533,7 @@
 
             /**
              * Listens for title changes from Firestore and updates the student form.
+             * DEPRECATED: This is kept for backward compatibility but should not be used.
              */
             function listenForTitle() {
                 if (titleListener) titleListener(); // Unsubscribe from old listener
@@ -1574,12 +1541,10 @@
                 titleListener = onSnapshot(doc(db, SETTINGS_DOC), async (docSnap) => {
                     let moduleCode = "";
                     let lectureDate = "";
-                    let expiryDate = "";
                     if (docSnap.exists()) {
                         const data = docSnap.data();
                         moduleCode = data.moduleCode || "";
                         lectureDate = data.lectureDate || "";
-                        expiryDate = data.expiryDate || "";
                     }
                     
                     // Format title with module code and date
@@ -1590,20 +1555,6 @@
                     } else {
                         formTitle.textContent = "Submit your feedback";
                     }
-                    
-                    // Load form availability setting from Firestore
-                    let formAvailable = true; // Default to available
-                    try {
-                        const adminDocSnap = await getDoc(doc(db, ADMIN_SETTINGS_DOC));
-                        if (adminDocSnap.exists()) {
-                            formAvailable = adminDocSnap.data().formAvailable || false;
-                        }
-                    } catch (error) {
-                        console.error("Error loading form availability:", error);
-                    }
-                    
-                    // Check if form should be available
-                    checkFormAvailability(expiryDate, formAvailable);
                 }, (error) => {
                     console.error("Error listening for title:", error);
                     // Don't show a fatal error, just use the default title

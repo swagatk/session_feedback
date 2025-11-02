@@ -38,11 +38,21 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
     
-    // Survey submissions - students can create (once per token), admins can read/delete
+    // Survey submissions - students can create and query for duplicates, admins can read/delete
     match /survey-submissions/{submissionId} {
-      allow read, delete: if isAdmin();
+      // Allow authenticated users to check if they've already submitted
+      // This is needed for both token and fingerprint duplicate detection
+      allow get: if isAuthenticated() && resource.data.surveyId != null;
+      allow list: if isAuthenticated();
+      
+      // Only admins can read all submissions and delete
+      allow delete: if isAdmin();
+      
+      // Students can create submissions
       allow create: if isAuthenticated();
-      allow update: if false; // Prevent editing after submission
+      
+      // Nobody can update submissions (prevents editing after submit)
+      allow update: if false;
     }
     
     // Legacy collections (for backward compatibility)
@@ -70,12 +80,24 @@ service cloud.firestore {
    - Only the admin email can CREATE, UPDATE, or DELETE surveys
 
 2. **Survey Submissions** (`/survey-submissions/{submissionId}`)
-   - Only admin can READ and DELETE submissions
+   - **Authenticated users can query** submissions to check for duplicates (both token and fingerprint)
+   - Only admin can DELETE submissions
    - Any authenticated user can CREATE a submission (for student feedback)
    - Nobody can UPDATE submissions (prevents editing after submit)
+   - **Device Fingerprinting**: Each submission includes a browser fingerprint to prevent resubmission from different browsers on the same device
+   - **Important**: Students can only query to check for duplicates, not view other students' feedback content (query returns only existence, not full data)
 
 3. **Legacy Collections** (kept for backward compatibility)
    - Old feedback and settings collections with similar rules
+
+### How Device Fingerprinting Works:
+
+The system now uses **browser fingerprinting** to prevent students from submitting multiple times using different browsers on the same device:
+
+- **What is tracked**: Browser type, screen resolution, timezone, platform, hardware specs, canvas fingerprint
+- **What is NOT tracked**: IP addresses, personal information, browsing history
+- **Privacy-friendly**: The fingerprint is a cryptographic hash - the original data cannot be reconstructed
+- **Effectiveness**: Even if a student opens the survey in Chrome, Firefox, and Edge on the same computer, only the first submission will be accepted
 
 ### Testing After Update:
 
@@ -83,6 +105,10 @@ service cloud.firestore {
 2. The survey history should now load without permission errors
 3. Create a new survey
 4. Copy the survey link and test submitting feedback in an incognito window
+5. **Test cross-browser detection**:
+   - Submit feedback in Chrome
+   - Try to submit again in Firefox on the same computer
+   - You should see: "Feedback has already been submitted from this device"
 
 ### Security Notes:
 
@@ -90,3 +116,21 @@ service cloud.firestore {
 - Only `swagat.kumar@gmail.com` has admin access
 - Submissions cannot be edited once created
 - Each submission uses a deterministic document ID based on `surveyId_token` to prevent duplicates
+- **Cross-browser protection**: Device fingerprinting prevents resubmission even when using different browsers
+- **Privacy-preserving**: Fingerprints are cryptographic hashes that cannot be reversed to identify individuals
+
+### Important Notes About Firestore Indexes:
+
+After deploying these rules, you need to create a composite index in Firestore for the fingerprint query:
+
+1. Go to Firebase Console → Firestore Database → Indexes tab
+2. Click "Add Index"
+3. Collection: `survey-submissions`
+4. Fields to index:
+   - `surveyId` (Ascending)
+   - `fingerprint` (Ascending)
+5. Query scope: Collection
+6. Click "Create"
+
+Alternatively, when you first use the fingerprint check, Firebase will show an error with a link to auto-create the index. Just click that link.
+

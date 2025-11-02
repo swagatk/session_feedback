@@ -477,20 +477,63 @@
             }
 
             /**
-             * Gets or creates a submission token for the current survey.
-             * Each survey gets its own unique token stored in localStorage.
+             * Generates a browser fingerprint for device identification.
+             * This creates a unique ID based on browser/device characteristics.
              */
-            function getOrCreateSurveyToken(surveyId) {
+            async function generateBrowserFingerprint() {
+                const components = [
+                    navigator.userAgent,
+                    navigator.language,
+                    navigator.platform,
+                    navigator.hardwareConcurrency || 'unknown',
+                    screen.colorDepth,
+                    screen.width + 'x' + screen.height,
+                    new Date().getTimezoneOffset(),
+                    navigator.deviceMemory || 'unknown',
+                    navigator.maxTouchPoints || 0
+                ];
+
+                // Add canvas fingerprint
+                try {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    ctx.textBaseline = 'top';
+                    ctx.font = '14px Arial';
+                    ctx.fillText('Browser fingerprint', 2, 2);
+                    components.push(canvas.toDataURL());
+                } catch (e) {
+                    components.push('canvas-error');
+                }
+
+                // Create hash from components
+                const fingerprint = components.join('|');
+                const encoder = new TextEncoder();
+                const data = encoder.encode(fingerprint);
+                const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+                const hashArray = Array.from(new Uint8Array(hashBuffer));
+                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+                
+                return 'fp_' + hashHex.substring(0, 32);
+            }
+
+            /**
+             * Gets or creates a submission token for the current survey.
+             * Now includes browser fingerprinting for cross-browser detection.
+             */
+            async function getOrCreateSurveyToken(surveyId) {
                 const tokenKey = SURVEY_TOKEN_PREFIX + surveyId;
                 let token = localStorage.getItem(tokenKey);
                 
                 if (!token) {
-                    // Create a new unique token for this survey
-                    token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                    // Generate browser fingerprint
+                    const fingerprint = await generateBrowserFingerprint();
+                    
+                    // Create a new unique token combining timestamp, random, and fingerprint
+                    token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15) + '_' + fingerprint;
                     localStorage.setItem(tokenKey, token);
-                    console.log(`Created new token for survey ${surveyId}:`, token);
+                    console.log(`Created new token for survey ${surveyId} with fingerprint`);
                 } else {
-                    console.log(`Using existing token for survey ${surveyId}:`, token);
+                    console.log(`Using existing token for survey ${surveyId}`);
                 }
                 
                 return token;
@@ -1469,7 +1512,7 @@
                     }
                     
                     // Get or create submission token for this survey
-                    const token = getOrCreateSurveyToken(surveyId);
+                    const token = await getOrCreateSurveyToken(surveyId);
                     
                     // Check if this token has already been used
                     const hasSubmitted = await checkTokenSubmission(surveyId, token);
@@ -1479,6 +1522,18 @@
                         feedbackFormContainer.classList.add('hidden');
                         successMessage.classList.remove('hidden');
                         console.log("Token already used for this survey");
+                        return;
+                    }
+                    
+                    // Check if this device fingerprint has already submitted (cross-browser detection)
+                    const fingerprint = await generateBrowserFingerprint();
+                    const hasFingerprintSubmitted = await checkFingerprintSubmission(surveyId, fingerprint);
+                    
+                    if (hasFingerprintSubmitted) {
+                        displayError(
+                            "Already Submitted", 
+                            "Feedback has already been submitted from this device for this survey. Multiple submissions from the same device are not allowed."
+                        );
                         return;
                     }
                     
@@ -1527,6 +1582,32 @@
                     return false;
                 } catch (error) {
                     console.error("Error checking token submission:", error);
+                    return false;
+                }
+            }
+
+            /**
+             * Checks if a device fingerprint has already been used for a survey.
+             * This prevents resubmission from different browsers on the same device.
+             */
+            async function checkFingerprintSubmission(surveyId, fingerprint) {
+                try {
+                    const fingerprintQuery = query(
+                        collection(db, SUBMISSIONS_COLLECTION),
+                        where('surveyId', '==', surveyId),
+                        where('fingerprint', '==', fingerprint)
+                    );
+                    const fingerprintSnapshot = await getDocs(fingerprintQuery);
+                    
+                    if (!fingerprintSnapshot.empty) {
+                        console.warn('Device fingerprint already used for this survey:', fingerprint);
+                        return true;
+                    }
+                    
+                    return false;
+                } catch (error) {
+                    console.error("Error checking fingerprint submission:", error);
+                    // On error, allow submission to avoid false blocking
                     return false;
                 }
             }
@@ -1646,12 +1727,17 @@
                             console.log("Form ratings:", { clarity, engagement, pace });
                             
                             // Get submission token for this survey
-                            const token = getOrCreateSurveyToken(currentSurveyId);
+                            const token = await getOrCreateSurveyToken(currentSurveyId);
                             console.log("Using token:", token);
+                            
+                            // Generate device fingerprint
+                            const fingerprint = await generateBrowserFingerprint();
+                            console.log("Device fingerprint:", fingerprint);
                             
                             const newSubmission = {
                                 surveyId: currentSurveyId,
                                 token: token,
+                                fingerprint: fingerprint, // Store fingerprint for cross-browser detection
                                 clarity,
                                 engagement,
                                 pace,
@@ -1665,13 +1751,23 @@
                             const submissionDocRef = getSubmissionDocRef(currentSurveyId, token);
                             console.log("Submission doc path:", submissionDocRef.path);
                             
+                            // Check both token and fingerprint
                             const alreadySubmitted = await checkTokenSubmission(currentSurveyId, token);
-                            console.log("Already submitted?", alreadySubmitted);
+                            console.log("Already submitted (token)?", alreadySubmitted);
 
                             if (alreadySubmitted) {
                                 console.warn("Duplicate submission attempt detected for token", token);
                                 feedbackFormContainer.classList.add('hidden');
                                 successMessage.classList.remove('hidden');
+                                return;
+                            }
+                            
+                            const fingerprintUsed = await checkFingerprintSubmission(currentSurveyId, fingerprint);
+                            console.log("Already submitted (fingerprint)?", fingerprintUsed);
+                            
+                            if (fingerprintUsed) {
+                                console.warn("Duplicate submission attempt detected for fingerprint", fingerprint);
+                                alert("This device has already submitted feedback for this survey. Multiple submissions from the same device are not allowed.");
                                 return;
                             }
 

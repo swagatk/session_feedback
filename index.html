@@ -2070,7 +2070,18 @@
                     console.log('✅ Fingerprint not found - can submit');
                     return false;
                 } catch (error) {
-                    console.error("Error checking fingerprint submission:", error);
+                    console.error("❌ CRITICAL ERROR checking fingerprint submission:", error);
+                    console.error("Error message:", error.message);
+                    
+                    // Check if error is related to missing Firestore index
+                    if (error.message && error.message.includes('index')) {
+                        console.error('🔥 MISSING FIRESTORE INDEX! Please create composite index:');
+                        console.error('   Collection: survey-submissions');
+                        console.error('   Fields: surveyId (Ascending) + fingerprint (Ascending)');
+                        console.error('   Go to: Firebase Console → Firestore Database → Indexes');
+                        alert('⚠️ Database configuration error detected.\n\nThe cross-browser duplicate prevention requires a Firestore index to be created.\n\nPlease check the browser console for instructions, or contact the administrator.');
+                    }
+                    
                     // On error, allow submission to avoid false blocking
                     return false;
                 }
@@ -2098,7 +2109,18 @@
                     console.log('✅ Device ID not found - can submit');
                     return false;
                 } catch (error) {
-                    console.error("Error checking device ID submission:", error);
+                    console.error("❌ CRITICAL ERROR checking device ID submission:", error);
+                    console.error("Error message:", error.message);
+                    
+                    // Check if error is related to missing Firestore index
+                    if (error.message && error.message.includes('index')) {
+                        console.error('🔥 MISSING FIRESTORE INDEX! Please create composite index:');
+                        console.error('   Collection: survey-submissions');
+                        console.error('   Fields: surveyId (Ascending) + deviceId (Ascending)');
+                        console.error('   Go to: Firebase Console → Firestore Database → Indexes');
+                        alert('⚠️ Database configuration error detected.\n\nThe cross-browser duplicate prevention requires a Firestore index to be created.\n\nPlease check the browser console for instructions, or contact the administrator.');
+                    }
+                    
                     // On error, allow submission to avoid false blocking
                     return false;
                 }

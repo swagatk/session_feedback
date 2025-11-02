@@ -477,6 +477,63 @@
             }
 
             /**
+             * Gets or creates a persistent device ID that survives across browsers.
+             * Stored in IndexedDB which is harder to clear than localStorage.
+             */
+            async function getOrCreateDeviceId() {
+                return new Promise((resolve, reject) => {
+                    const dbName = 'SurveyDeviceDB';
+                    const storeName = 'device';
+                    const request = indexedDB.open(dbName, 1);
+                    
+                    request.onerror = () => {
+                        console.error('IndexedDB error:', request.error);
+                        // Fallback to localStorage
+                        let deviceId = localStorage.getItem('deviceId');
+                        if (!deviceId) {
+                            deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                            localStorage.setItem('deviceId', deviceId);
+                        }
+                        resolve(deviceId);
+                    };
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    };
+                    
+                    request.onsuccess = (event) => {
+                        const db = event.target.result;
+                        const transaction = db.transaction([storeName], 'readwrite');
+                        const store = transaction.objectStore(storeName);
+                        const getRequest = store.get('deviceId');
+                        
+                        getRequest.onsuccess = () => {
+                            let deviceId = getRequest.result;
+                            if (!deviceId) {
+                                // Create new device ID
+                                deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                                store.put(deviceId, 'deviceId');
+                                console.log('Created new device ID:', deviceId);
+                            } else {
+                                console.log('Using existing device ID:', deviceId);
+                            }
+                            resolve(deviceId);
+                        };
+                        
+                        getRequest.onerror = () => {
+                            console.error('Error reading from IndexedDB');
+                            // Fallback
+                            let deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+                            resolve(deviceId);
+                        };
+                    };
+                });
+            }
+
+            /**
              * Generates a browser fingerprint for device identification.
              * This creates a unique ID based on browser/device characteristics.
              */
@@ -488,9 +545,11 @@
                     navigator.hardwareConcurrency || 'unknown',
                     screen.colorDepth,
                     screen.width + 'x' + screen.height,
+                    screen.availWidth + 'x' + screen.availHeight,
                     new Date().getTimezoneOffset(),
                     navigator.deviceMemory || 'unknown',
-                    navigator.maxTouchPoints || 0
+                    navigator.maxTouchPoints || 0,
+                    window.devicePixelRatio || 1
                 ];
 
                 // Add canvas fingerprint
@@ -499,7 +558,10 @@
                     const ctx = canvas.getContext('2d');
                     ctx.textBaseline = 'top';
                     ctx.font = '14px Arial';
-                    ctx.fillText('Browser fingerprint', 2, 2);
+                    ctx.fillStyle = '#f60';
+                    ctx.fillRect(125, 1, 62, 20);
+                    ctx.fillStyle = '#069';
+                    ctx.fillText('Browser fingerprint 🔒', 2, 15);
                     components.push(canvas.toDataURL());
                 } catch (e) {
                     components.push('canvas-error');
@@ -507,6 +569,8 @@
 
                 // Create hash from components
                 const fingerprint = components.join('|');
+                console.log('Fingerprint components:', components.slice(0, 11)); // Don't log canvas
+                
                 const encoder = new TextEncoder();
                 const data = encoder.encode(fingerprint);
                 const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -525,15 +589,20 @@
                 let token = localStorage.getItem(tokenKey);
                 
                 if (!token) {
+                    // Get persistent device ID
+                    const deviceId = await getOrCreateDeviceId();
+                    
                     // Generate browser fingerprint
                     const fingerprint = await generateBrowserFingerprint();
                     
-                    // Create a new unique token combining timestamp, random, and fingerprint
-                    token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15) + '_' + fingerprint;
+                    // Create a new unique token combining all identifiers
+                    token = 'token_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15) + '_' + deviceId.substring(0, 8) + '_' + fingerprint.substring(0, 8);
                     localStorage.setItem(tokenKey, token);
-                    console.log(`Created new token for survey ${surveyId} with fingerprint`);
+                    console.log('✅ Created new token for survey', surveyId);
+                    console.log('   Device ID:', deviceId);
+                    console.log('   Fingerprint:', fingerprint);
                 } else {
-                    console.log(`Using existing token for survey ${surveyId}`);
+                    console.log('📌 Using existing token for survey', surveyId);
                 }
                 
                 return token;
@@ -1521,7 +1590,18 @@
                         // Show success message
                         feedbackFormContainer.classList.add('hidden');
                         successMessage.classList.remove('hidden');
-                        console.log("Token already used for this survey");
+                        console.log("✅ Token already used - showing thank you message");
+                        return;
+                    }
+                    
+                    // Check device ID (persists across browsers via IndexedDB)
+                    const deviceId = await getOrCreateDeviceId();
+                    const hasDeviceSubmitted = await checkDeviceIdSubmission(surveyId, deviceId);
+                    
+                    if (hasDeviceSubmitted) {
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                        console.log("✅ Device ID already used - showing thank you message");
                         return;
                     }
                     
@@ -1530,14 +1610,14 @@
                     const hasFingerprintSubmitted = await checkFingerprintSubmission(surveyId, fingerprint);
                     
                     if (hasFingerprintSubmitted) {
-                        displayError(
-                            "Already Submitted", 
-                            "Feedback has already been submitted from this device for this survey. Multiple submissions from the same device are not allowed."
-                        );
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.remove('hidden');
+                        console.log("✅ Fingerprint already used - showing thank you message");
                         return;
                     }
                     
                     // Show the form with survey details
+                    console.log("🆕 All checks passed - showing feedback form");
                     formTitle.innerHTML = `${surveyData.moduleCode}:${surveyData.lectureDate}<br>Submit your feedback`;
                     feedbackFormContainer.classList.remove('hidden');
                     successMessage.classList.add('hidden');
@@ -1592,6 +1672,7 @@
              */
             async function checkFingerprintSubmission(surveyId, fingerprint) {
                 try {
+                    console.log('🔍 Checking fingerprint:', fingerprint, 'for survey:', surveyId);
                     const fingerprintQuery = query(
                         collection(db, SUBMISSIONS_COLLECTION),
                         where('surveyId', '==', surveyId),
@@ -1600,13 +1681,42 @@
                     const fingerprintSnapshot = await getDocs(fingerprintQuery);
                     
                     if (!fingerprintSnapshot.empty) {
-                        console.warn('Device fingerprint already used for this survey:', fingerprint);
+                        console.warn('❌ Device fingerprint already used for this survey');
                         return true;
                     }
                     
+                    console.log('✅ Fingerprint not found - can submit');
                     return false;
                 } catch (error) {
                     console.error("Error checking fingerprint submission:", error);
+                    // On error, allow submission to avoid false blocking
+                    return false;
+                }
+            }
+
+            /**
+             * Checks if a device ID has already been used for a survey.
+             * This provides additional cross-browser protection via IndexedDB.
+             */
+            async function checkDeviceIdSubmission(surveyId, deviceId) {
+                try {
+                    console.log('🔍 Checking device ID:', deviceId, 'for survey:', surveyId);
+                    const deviceQuery = query(
+                        collection(db, SUBMISSIONS_COLLECTION),
+                        where('surveyId', '==', surveyId),
+                        where('deviceId', '==', deviceId)
+                    );
+                    const deviceSnapshot = await getDocs(deviceQuery);
+                    
+                    if (!deviceSnapshot.empty) {
+                        console.warn('❌ Device ID already used for this survey');
+                        return true;
+                    }
+                    
+                    console.log('✅ Device ID not found - can submit');
+                    return false;
+                } catch (error) {
+                    console.error("Error checking device ID submission:", error);
                     // On error, allow submission to avoid false blocking
                     return false;
                 }
@@ -1730,6 +1840,10 @@
                             const token = await getOrCreateSurveyToken(currentSurveyId);
                             console.log("Using token:", token);
                             
+                            // Get device ID
+                            const deviceId = await getOrCreateDeviceId();
+                            console.log("Device ID:", deviceId);
+                            
                             // Generate device fingerprint
                             const fingerprint = await generateBrowserFingerprint();
                             console.log("Device fingerprint:", fingerprint);
@@ -1737,6 +1851,7 @@
                             const newSubmission = {
                                 surveyId: currentSurveyId,
                                 token: token,
+                                deviceId: deviceId, // Store device ID for cross-browser detection
                                 fingerprint: fingerprint, // Store fingerprint for cross-browser detection
                                 clarity,
                                 engagement,
@@ -1751,7 +1866,7 @@
                             const submissionDocRef = getSubmissionDocRef(currentSurveyId, token);
                             console.log("Submission doc path:", submissionDocRef.path);
                             
-                            // Check both token and fingerprint
+                            // Check token, device ID, and fingerprint
                             const alreadySubmitted = await checkTokenSubmission(currentSurveyId, token);
                             console.log("Already submitted (token)?", alreadySubmitted);
 
@@ -1762,12 +1877,23 @@
                                 return;
                             }
                             
+                            const deviceUsed = await checkDeviceIdSubmission(currentSurveyId, deviceId);
+                            console.log("Already submitted (device ID)?", deviceUsed);
+                            
+                            if (deviceUsed) {
+                                console.warn("Duplicate submission attempt detected for device ID", deviceId);
+                                feedbackFormContainer.classList.add('hidden');
+                                successMessage.classList.remove('hidden');
+                                return;
+                            }
+                            
                             const fingerprintUsed = await checkFingerprintSubmission(currentSurveyId, fingerprint);
                             console.log("Already submitted (fingerprint)?", fingerprintUsed);
                             
                             if (fingerprintUsed) {
                                 console.warn("Duplicate submission attempt detected for fingerprint", fingerprint);
-                                alert("This device has already submitted feedback for this survey. Multiple submissions from the same device are not allowed.");
+                                feedbackFormContainer.classList.add('hidden');
+                                successMessage.classList.remove('hidden');
                                 return;
                             }
 

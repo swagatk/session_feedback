@@ -888,11 +888,15 @@
                     
                     if (currentSurveyId) {
                         console.log("Survey ID found in URL:", currentSurveyId);
+                        // Hide welcome message and show feedback form
+                        document.getElementById('welcome-message').classList.add('hidden');
                         await initializeSurvey(currentSurveyId);
                     } else {
-                        console.log("No survey ID in URL - showing default view");
-                        // For backward compatibility, listen for old format
-                        listenForTitle();
+                        console.log("No survey ID in URL - showing welcome message");
+                        // Show welcome message, hide feedback form
+                        document.getElementById('welcome-message').classList.remove('hidden');
+                        feedbackFormContainer.classList.add('hidden');
+                        successMessage.classList.add('hidden');
                     }
                     
                     console.log("Firebase initialization complete!");

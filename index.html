@@ -2921,6 +2921,7 @@
                     const printHiddenElements = content.querySelectorAll('.print-hidden');
                     printHiddenElements.forEach(element => {
                         element.style.display = 'none';
+                        element.setAttribute('data-hidden-for-pdf', 'true'); // Mark for exclusion
                     });
                     
                     // Prepare content for PDF capture
@@ -2937,17 +2938,19 @@
                         table.style.tableLayout = 'fixed';
                         table.style.wordWrap = 'break-word';
                         
-                        // Ensure all cells are visible
+                        // Ensure all cells are visible (except those hidden for PDF)
                         const cells = table.querySelectorAll('th, td');
                         cells.forEach(cell => {
-                            cell.style.whiteSpace = 'normal';
-                            cell.style.wordBreak = 'break-word';
-                            cell.style.padding = '8px';
+                            if (!cell.hasAttribute('data-hidden-for-pdf')) {
+                                cell.style.whiteSpace = 'normal';
+                                cell.style.wordBreak = 'break-word';
+                                cell.style.padding = '8px';
+                            }
                         });
                     }
                     
                     // Wait for any layout changes to complete
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    await new Promise(resolve => setTimeout(resolve, 200));
                     
                     const canvas = await html2canvas(content, {
                         scale: 1.5, // Balanced scale for quality vs performance
@@ -3011,6 +3014,7 @@
                     const printHiddenElements = content.querySelectorAll('.print-hidden');
                     printHiddenElements.forEach(element => {
                         element.style.display = '';
+                        element.removeAttribute('data-hidden-for-pdf'); // Clean up marker
                     });
                     
                     // Reset button state

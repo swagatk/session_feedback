@@ -2914,6 +2914,12 @@
                     if (pdfHeader) pdfHeader.style.display = 'block';
                     if (pdfFooter) pdfFooter.style.display = 'block';
                     
+                    // Hide delete buttons and action column for PDF
+                    const printHiddenElements = content.querySelectorAll('.print-hidden');
+                    printHiddenElements.forEach(element => {
+                        element.style.display = 'none';
+                    });
+                    
                     // Prepare content for PDF capture
                     // Remove problematic classes and add PDF-specific styling
                     content.style.width = 'auto';
@@ -2997,6 +3003,12 @@
                     const pdfFooter = document.getElementById('pdf-footer');
                     if (pdfHeader) pdfHeader.style.display = 'none';
                     if (pdfFooter) pdfFooter.style.display = 'none';
+                    
+                    // Show delete buttons and action column again
+                    const printHiddenElements = content.querySelectorAll('.print-hidden');
+                    printHiddenElements.forEach(element => {
+                        element.style.display = '';
+                    });
                     
                     // Reset button state
                     downloadPdfButton.textContent = originalButtonText;

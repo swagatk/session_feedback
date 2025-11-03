@@ -1857,7 +1857,10 @@
                     feedbackListener = onSnapshot(feedbackQuery, (querySnapshot) => {
                         const feedback = [];
                         querySnapshot.forEach((docSnap) => {
-                            feedback.push(docSnap.data());
+                            feedback.push({
+                                id: docSnap.id, // Include document ID for delete functionality
+                                ...docSnap.data()
+                            });
                         });
                         
                         console.log(`📊 Feedback listener received ${feedback.length} submissions for survey ${selectedSurveyId}`);

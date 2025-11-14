@@ -6,9 +6,9 @@
     <title>Lecture Feedback</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- jsPDF and html2canvas for PDF export -->
+    <!-- jsPDF + autoTable for PDF export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     
     <style>
         .star-rating {
@@ -583,6 +583,9 @@
             let adminSelectedSurveyId = null; // Currently selected survey for admin view
             let adminSelectedSurveyName = '';
             const surveyMetadataById = new Map();
+            let pdfTableSnapshot = { columns: [], rows: [] }; // Cached data for PDF export
+            let latestOverallRatingText = '-- / 5.0';
+            let latestResponseCount = 0;
 
             // --- SELECTORS ---
             const adminButton = document.getElementById('admin-button');
@@ -2170,6 +2173,8 @@
                 if (feedback.length === 0) {
                     overallRatingDisplay.textContent = '-- / 5.0';
                     ratingCount.textContent = '(No submissions yet)';
+                    latestOverallRatingText = '-- / 5.0';
+                    latestResponseCount = 0;
                     return;
                 }
 
@@ -2178,6 +2183,8 @@
 
                 overallRatingDisplay.textContent = `${overallAverage.toFixed(1)} / 5.0`;
                 ratingCount.textContent = `(Based on ${feedback.length} submission${feedback.length === 1 ? '' : 's'})`;
+                latestOverallRatingText = overallRatingDisplay.textContent;
+                latestResponseCount = feedback.length;
             }
 
             /**
@@ -2219,6 +2226,7 @@
                 
                 // Update table header
                 tableHead.innerHTML = '';
+                const pdfColumns = [...ratingFields, ...commentFields, 'Submitted'];
                 ratingFields.forEach(field => {
                     const th = document.createElement('th');
                     th.scope = 'col';
@@ -2250,6 +2258,7 @@
                 
                 // Clear existing table body
                 tableBody.innerHTML = '';
+                pdfTableSnapshot = { columns: pdfColumns, rows: [] };
                 
                 if (feedback.length === 0) {
                     const colspan = ratingFields.length + commentFields.length + 2; // +2 for timestamp and delete
@@ -2263,26 +2272,29 @@
                     const bTime = b.timestamp ? b.timestamp.toMillis() : 0;
                     return bTime - aTime;
                 });
+                const pdfRows = [];
 
                 feedback.forEach(entry => {
                     const row = document.createElement('tr');
                     const submittedDate = entry.timestamp ? entry.timestamp.toDate().toLocaleString() : 'Just now';
+                    const pdfRow = [];
                     
                     // Add rating cells
                     ratingFields.forEach(field => {
                         const td = document.createElement('td');
                         td.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
+                        let displayValue = '-';
                         if (entry.ratings && entry.ratings[field] !== undefined) {
-                            td.textContent = entry.ratings[field];
+                            displayValue = entry.ratings[field];
                         } else if (field === 'Clarity' && entry.clarity !== undefined) {
-                            td.textContent = entry.clarity; // Legacy support
+                            displayValue = entry.clarity; // Legacy support
                         } else if (field === 'Engagement' && entry.engagement !== undefined) {
-                            td.textContent = entry.engagement;
+                            displayValue = entry.engagement;
                         } else if (field === 'Pace' && entry.pace !== undefined) {
-                            td.textContent = entry.pace;
-                        } else {
-                            td.textContent = '-';
+                            displayValue = entry.pace;
                         }
+                        td.textContent = displayValue;
+                        pdfRow.push(displayValue ?? '-');
                         row.appendChild(td);
                     });
                     
@@ -2290,15 +2302,16 @@
                     commentFields.forEach(field => {
                         const td = document.createElement('td');
                         td.className = 'py-4 px-3 text-sm text-gray-500 min-w-[150px] whitespace-pre-wrap break-words';
+                        let commentText = '';
                         if (entry.comments && entry.comments[field]) {
-                            td.textContent = entry.comments[field];
+                            commentText = entry.comments[field];
                         } else if (field === 'Positive' && entry.positive) {
-                            td.textContent = entry.positive; // Legacy support
+                            commentText = entry.positive; // Legacy support
                         } else if (field === 'Negative' && entry.negative) {
-                            td.textContent = entry.negative;
-                        } else {
-                            td.textContent = '';
+                            commentText = entry.negative;
                         }
+                        td.textContent = commentText;
+                        pdfRow.push(commentText || '');
                         row.appendChild(td);
                     });
                     
@@ -2306,6 +2319,7 @@
                     const tdTime = document.createElement('td');
                     tdTime.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
                     tdTime.textContent = submittedDate;
+                    pdfRow.push(submittedDate);
                     row.appendChild(tdTime);
                     
                     // Add delete button cell
@@ -2320,7 +2334,9 @@
                     row.appendChild(tdDelete);
                     
                     tableBody.appendChild(row);
+                    pdfRows.push(pdfRow);
                 });
+                pdfTableSnapshot = { columns: pdfColumns, rows: pdfRows };
             }
 
             /**
@@ -2873,174 +2889,87 @@
              * Handles the PDF download.
              */
             async function handleDownloadPdf() {
-                const { jsPDF } = window.jspdf;
-                const content = document.getElementById('pdf-content-wrapper');
-                
-                if (!content) {
-                    console.error("PDF content wrapper not found!");
+                const { jsPDF } = window.jspdf || {};
+                if (!jsPDF) {
+                    alert('PDF library failed to load. Please refresh and try again.');
                     return;
                 }
-                
-                // Show loading state
+
+                if (!pdfTableSnapshot.columns.length) {
+                    alert('Feedback table is still loading. Please try again in a moment.');
+                    return;
+                }
+
                 const originalButtonText = downloadPdfButton.textContent;
                 downloadPdfButton.textContent = 'Generating PDF...';
                 downloadPdfButton.disabled = true;
-                
+
                 try {
-                    // Get current survey information
-                    const surveyInfo = adminSelectedSurveyName || 'Feedback Report';
-                    const overallRating = overallRatingDisplay.textContent;
-                    const responseCount = ratingCount.textContent;
-                    
-                    // Populate PDF header
-                    const pdfHeader = document.getElementById('pdf-header');
-                    const pdfSurveyTitle = document.getElementById('pdf-survey-title');
-                    const pdfOverallRating = document.getElementById('pdf-overall-rating');
-                    const pdfResponseCount = document.getElementById('pdf-response-count');
-                    
-                    if (pdfSurveyTitle) pdfSurveyTitle.textContent = surveyInfo;
-                    if (pdfOverallRating) pdfOverallRating.textContent = overallRating;
-                    if (pdfResponseCount) {
-                        // Extract just the number from the response count
-                        const match = responseCount.match(/(\d+)/);
-                        pdfResponseCount.textContent = match ? match[1] : '0';
-                    }
-                    
-                    // Populate PDF footer with current date/time
-                    const pdfFooter = document.getElementById('pdf-footer');
-                    const pdfDownloadTime = document.getElementById('pdf-download-time');
-                    if (pdfDownloadTime) {
-                        pdfDownloadTime.textContent = `Report downloaded on ${new Date().toLocaleString()}`;
-                    }
-                    
-                    // Show header and footer for PDF capture
-                    if (pdfHeader) pdfHeader.style.display = 'block';
-                    if (pdfFooter) pdfFooter.style.display = 'block';
-                    
-                    // Hide delete buttons and action column for PDF
-                    const printHiddenElements = content.querySelectorAll('.print-hidden');
-                    printHiddenElements.forEach(element => {
-                        element.style.display = 'none';
-                        element.setAttribute('data-hidden-for-pdf', 'true'); // Mark for exclusion
-                    });
-                    
-                    // Prepare content for PDF capture
-                    // Remove problematic classes and add PDF-specific styling
-                    content.style.width = 'auto';
-                    content.style.maxWidth = 'none';
-                    content.style.overflow = 'visible';
-                    content.classList.add('pdf-export');
-                    
-                    // Fix table layout for PDF
-                    const table = content.querySelector('table');
-                    if (table) {
-                        table.style.width = '100%';
-                        table.style.tableLayout = 'fixed';
-                        table.style.wordWrap = 'break-word';
-                        
-                        // Ensure all cells are visible (except those hidden for PDF)
-                        const cells = table.querySelectorAll('th, td');
-                        cells.forEach(cell => {
-                            if (!cell.hasAttribute('data-hidden-for-pdf')) {
-                                cell.style.whiteSpace = 'normal';
-                                cell.style.wordBreak = 'break-word';
-                                cell.style.padding = '8px';
-                            }
-                        });
-                    }
-                    
-                    // Wait for any layout changes to complete
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    
-                    const canvas = await html2canvas(content, {
-                        scale: 1.5, // Balanced scale for quality vs performance
-                        useCORS: true,
-                        logging: false,
-                        width: content.scrollWidth,
-                        height: content.scrollHeight,
-                        scrollX: 0,
-                        scrollY: 0,
-                        allowTaint: true,
-                        backgroundColor: '#ffffff'
-                    });
-                    
-                    const imgData = canvas.toDataURL('image/png');
-                    
-                    // Use A4 Landscape format with margins
-                    const pdfWidth = 297; // A4 landscape width in mm
-                    const pdfHeight = 210; // A4 landscape height in mm
-                    const margin = 15; // 15mm margins on all sides
-                    const footerHeight = 15; // Reserve space for footer
-                    const contentWidth = pdfWidth - (margin * 2);
-                    const contentHeight = pdfHeight - (margin * 2) - footerHeight; // Account for footer
-                    
-                    // Calculate scale to fit content within available space
-                    const imgWidth = canvas.width;
-                    const imgHeight = canvas.height;
-                    const scaleX = contentWidth / (imgWidth * 0.264583); // Convert px to mm
-                    const scaleY = contentHeight / (imgHeight * 0.264583);
-                    const scale = Math.min(scaleX, scaleY, 0.95); // Cap at 95% to ensure margins
-                    
-                    const scaledWidth = (imgWidth * 0.264583) * scale;
-                    const scaledHeight = (imgHeight * 0.264583) * scale;
-                    
-                    // Use landscape orientation for A4
                     const pdf = new jsPDF({
                         orientation: 'landscape',
                         unit: 'mm',
                         format: 'a4'
                     });
-                    
-                    // Center the content horizontally and start from top margin
-                    const x = (pdfWidth - scaledWidth) / 2;
-                    const y = margin;
-                    
-                    pdf.addImage(imgData, 'PNG', x, y, scaledWidth, scaledHeight);
-                    
-                    const moduleCode = adminSelectedSurveyName || moduleCodeInput.value.trim() || "Feedback-Report";
-                    pdf.save(`${moduleCode.replace(/[^a-z0-9]/gi, '_')}-Report.pdf`);
+
+                    if (typeof pdf.autoTable !== 'function') {
+                        throw new Error('jsPDF autoTable plugin is unavailable.');
+                    }
+
+                    const marginLeft = 12;
+                    const marginTop = 16;
+                    const surveyInfo = adminSelectedSurveyName || moduleCodeInput.value.trim() || 'Feedback Report';
+
+                    pdf.setFontSize(18);
+                    pdf.text(surveyInfo, marginLeft, marginTop);
+
+                    pdf.setFontSize(11);
+                    pdf.text(`Overall Rating: ${latestOverallRatingText}`, marginLeft, marginTop + 8);
+                    pdf.text(`Responses: ${latestResponseCount}`, marginLeft, marginTop + 16);
+                    pdf.text(`Generated: ${new Date().toLocaleString()}`, marginLeft, marginTop + 24);
+
+                    const buildEmptyRow = () => {
+                        const placeholder = new Array(pdfTableSnapshot.columns.length).fill('');
+                        if (placeholder.length > 0) {
+                            placeholder[0] = 'No feedback submitted yet.';
+                        }
+                        return placeholder;
+                    };
+
+                    const tableRows = pdfTableSnapshot.rows.length
+                        ? pdfTableSnapshot.rows
+                        : [buildEmptyRow()];
+
+                    pdf.autoTable({
+                        head: [pdfTableSnapshot.columns],
+                        body: tableRows,
+                        startY: marginTop + 32,
+                        theme: 'grid',
+                        margin: { left: marginLeft, right: marginLeft },
+                        tableWidth: 'auto',
+                        styles: {
+                            fontSize: 9,
+                            cellPadding: 2.2,
+                            overflow: 'linebreak',
+                            cellWidth: 'wrap',
+                            valign: 'top'
+                        },
+                        headStyles: {
+                            fillColor: [37, 99, 235],
+                            textColor: 255,
+                            fontStyle: 'bold'
+                        },
+                        alternateRowStyles: { fillColor: [245, 247, 255] }
+                    });
+
+                    const safeName = surveyInfo.replace(/[^a-z0-9]/gi, '_') || 'Feedback_Report';
+                    pdf.save(`${safeName}-Report.pdf`);
 
                 } catch (error) {
-                    console.error("Error generating PDF:", error);
-                    alert("Could not generate PDF. See console for details.");
+                    console.error('Error generating PDF:', error);
+                    alert('Could not generate PDF. Please try again.');
                 } finally {
-                    // Hide header and footer after PDF generation
-                    const pdfHeader = document.getElementById('pdf-header');
-                    const pdfFooter = document.getElementById('pdf-footer');
-                    if (pdfHeader) pdfHeader.style.display = 'none';
-                    if (pdfFooter) pdfFooter.style.display = 'none';
-                    
-                    // Show delete buttons and action column again
-                    const printHiddenElements = content.querySelectorAll('.print-hidden');
-                    printHiddenElements.forEach(element => {
-                        element.style.display = '';
-                        element.removeAttribute('data-hidden-for-pdf'); // Clean up marker
-                    });
-                    
-                    // Reset button state
                     downloadPdfButton.textContent = originalButtonText;
                     downloadPdfButton.disabled = false;
-                    
-                    // Clean up styles
-                    content.style.width = '';
-                    content.style.maxWidth = '';
-                    content.style.overflow = '';
-                    content.classList.remove('pdf-export');
-                    
-                    // Reset table styles
-                    const table = content.querySelector('table');
-                    if (table) {
-                        table.style.width = '';
-                        table.style.tableLayout = '';
-                        table.style.wordWrap = '';
-                        
-                        const cells = table.querySelectorAll('th, td');
-                        cells.forEach(cell => {
-                            cell.style.whiteSpace = '';
-                            cell.style.wordBreak = '';
-                            cell.style.padding = '';
-                        });
-                    }
                 }
             }
             

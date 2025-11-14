@@ -583,7 +583,7 @@
             let adminSelectedSurveyId = null; // Currently selected survey for admin view
             let adminSelectedSurveyName = '';
             const surveyMetadataById = new Map();
-            let pdfTableSnapshot = { columns: [], rows: [] }; // Cached data for PDF export
+            let pdfTableSnapshot = { columns: [], rows: [], columnStyles: {} }; // Cached data for PDF export
             let latestOverallRatingText = '-- / 5.0';
             let latestResponseCount = 0;
 
@@ -2227,6 +2227,17 @@
                 // Update table header
                 tableHead.innerHTML = '';
                 const pdfColumns = [...ratingFields, ...commentFields, 'Submitted'];
+                const pdfColumnStyles = {};
+                let columnCursor = 0;
+                ratingFields.forEach(() => {
+                    pdfColumnStyles[columnCursor] = { cellWidth: 18 };
+                    columnCursor += 1;
+                });
+                commentFields.forEach(() => {
+                    pdfColumnStyles[columnCursor] = { cellWidth: 'wrap', minCellWidth: 42, maxCellWidth: 110 };
+                    columnCursor += 1;
+                });
+                pdfColumnStyles[columnCursor] = { cellWidth: 32 };
                 ratingFields.forEach(field => {
                     const th = document.createElement('th');
                     th.scope = 'col';
@@ -2258,7 +2269,7 @@
                 
                 // Clear existing table body
                 tableBody.innerHTML = '';
-                pdfTableSnapshot = { columns: pdfColumns, rows: [] };
+                pdfTableSnapshot = { columns: pdfColumns, rows: [], columnStyles: pdfColumnStyles };
                 
                 if (feedback.length === 0) {
                     const colspan = ratingFields.length + commentFields.length + 2; // +2 for timestamp and delete
@@ -2282,7 +2293,7 @@
                     // Add rating cells
                     ratingFields.forEach(field => {
                         const td = document.createElement('td');
-                        td.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
+                        td.className = 'py-4 px-3 text-sm text-gray-500';
                         let displayValue = '-';
                         if (entry.ratings && entry.ratings[field] !== undefined) {
                             displayValue = entry.ratings[field];
@@ -2317,7 +2328,7 @@
                     
                     // Add timestamp cell
                     const tdTime = document.createElement('td');
-                    tdTime.className = 'whitespace-nowrap py-4 px-3 text-sm text-gray-500';
+                    tdTime.className = 'py-4 px-3 text-sm text-gray-500 break-words';
                     tdTime.textContent = submittedDate;
                     pdfRow.push(submittedDate);
                     row.appendChild(tdTime);
@@ -2336,7 +2347,7 @@
                     tableBody.appendChild(row);
                     pdfRows.push(pdfRow);
                 });
-                pdfTableSnapshot = { columns: pdfColumns, rows: pdfRows };
+                pdfTableSnapshot = { columns: pdfColumns, rows: pdfRows, columnStyles: pdfColumnStyles };
             }
 
             /**
@@ -2939,19 +2950,28 @@
                         ? pdfTableSnapshot.rows
                         : [buildEmptyRow()];
 
+                    const availableWidth = pdf.internal.pageSize.getWidth() - marginLeft * 2;
+                    const columnStyles = Object.keys(pdfTableSnapshot.columnStyles || {}).length
+                        ? pdfTableSnapshot.columnStyles
+                        : undefined;
+
                     pdf.autoTable({
                         head: [pdfTableSnapshot.columns],
                         body: tableRows,
                         startY: marginTop + 32,
                         theme: 'grid',
                         margin: { left: marginLeft, right: marginLeft },
-                        tableWidth: 'auto',
+                        tableWidth: availableWidth,
+                        columnStyles,
                         styles: {
                             fontSize: 9,
                             cellPadding: 2.2,
                             overflow: 'linebreak',
                             cellWidth: 'wrap',
                             valign: 'top'
+                        },
+                        bodyStyles: {
+                            overflow: 'linebreak'
                         },
                         headStyles: {
                             fillColor: [37, 99, 235],

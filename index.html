@@ -583,7 +583,7 @@
             let adminSelectedSurveyId = null; // Currently selected survey for admin view
             let adminSelectedSurveyName = '';
             const surveyMetadataById = new Map();
-            let pdfTableSnapshot = { columns: [], rows: [], columnStyles: {} }; // Cached data for PDF export
+            let pdfTableSnapshot = { columns: [], rows: [], columnTypes: [] }; // Cached data for PDF export
             let latestOverallRatingText = '-- / 5.0';
             let latestResponseCount = 0;
 
@@ -2227,17 +2227,11 @@
                 // Update table header
                 tableHead.innerHTML = '';
                 const pdfColumns = [...ratingFields, ...commentFields, 'Submitted'];
-                const pdfColumnStyles = {};
-                let columnCursor = 0;
-                ratingFields.forEach(() => {
-                    pdfColumnStyles[columnCursor] = { cellWidth: 18 };
-                    columnCursor += 1;
-                });
-                commentFields.forEach(() => {
-                    pdfColumnStyles[columnCursor] = { cellWidth: 'wrap', minCellWidth: 42, maxCellWidth: 110 };
-                    columnCursor += 1;
-                });
-                pdfColumnStyles[columnCursor] = { cellWidth: 32 };
+                const pdfColumnTypes = [
+                    ...ratingFields.map(() => 'rating'),
+                    ...commentFields.map(() => 'comment'),
+                    'timestamp'
+                ];
                 ratingFields.forEach(field => {
                     const th = document.createElement('th');
                     th.scope = 'col';
@@ -2269,7 +2263,7 @@
                 
                 // Clear existing table body
                 tableBody.innerHTML = '';
-                pdfTableSnapshot = { columns: pdfColumns, rows: [], columnStyles: pdfColumnStyles };
+                pdfTableSnapshot = { columns: pdfColumns, rows: [], columnTypes: pdfColumnTypes };
                 
                 if (feedback.length === 0) {
                     const colspan = ratingFields.length + commentFields.length + 2; // +2 for timestamp and delete
@@ -2347,7 +2341,7 @@
                     tableBody.appendChild(row);
                     pdfRows.push(pdfRow);
                 });
-                pdfTableSnapshot = { columns: pdfColumns, rows: pdfRows, columnStyles: pdfColumnStyles };
+                pdfTableSnapshot = { columns: pdfColumns, rows: pdfRows, columnTypes: pdfColumnTypes };
             }
 
             /**
@@ -2951,9 +2945,51 @@
                         : [buildEmptyRow()];
 
                     const availableWidth = pdf.internal.pageSize.getWidth() - marginLeft * 2;
-                    const columnStyles = Object.keys(pdfTableSnapshot.columnStyles || {}).length
-                        ? pdfTableSnapshot.columnStyles
-                        : undefined;
+                    const columnTypes = pdfTableSnapshot.columnTypes || [];
+                    const ratingCount = columnTypes.filter(type => type === 'rating').length;
+                    const commentCount = columnTypes.filter(type => type === 'comment').length;
+                    const timestampCount = columnTypes.filter(type => type === 'timestamp').length;
+
+                    const RATING_UNITS = 1;
+                    const COMMENT_UNITS = 3;
+                    const TIMESTAMP_UNITS = 1.2;
+                    const totalUnits = (ratingCount * RATING_UNITS) +
+                        (commentCount * COMMENT_UNITS) +
+                        (timestampCount * TIMESTAMP_UNITS);
+                    const unitWidth = totalUnits ? availableWidth / totalUnits : availableWidth;
+
+                    const ratingWidth = ratingCount
+                        ? Math.max(12, Math.min(22, unitWidth * RATING_UNITS))
+                        : 0;
+                    const commentWidth = commentCount
+                        ? Math.max(45, Math.min(120, unitWidth * COMMENT_UNITS))
+                        : 0;
+                    const timestampWidth = timestampCount
+                        ? Math.max(28, Math.min(45, unitWidth * TIMESTAMP_UNITS))
+                        : 0;
+
+                    const columnStyles = {};
+                    let columnIndex = 0;
+                    columnTypes.forEach(type => {
+                        if (type === 'rating') {
+                            columnStyles[columnIndex] = {
+                                cellWidth: ratingWidth,
+                                halign: 'center',
+                                overflow: 'linebreak'
+                            };
+                        } else if (type === 'comment') {
+                            columnStyles[columnIndex] = {
+                                cellWidth: commentWidth,
+                                overflow: 'linebreak'
+                            };
+                        } else {
+                            columnStyles[columnIndex] = {
+                                cellWidth: timestampWidth || 38,
+                                overflow: 'linebreak'
+                            };
+                        }
+                        columnIndex += 1;
+                    });
 
                     pdf.autoTable({
                         head: [pdfTableSnapshot.columns],
@@ -2961,7 +2997,7 @@
                         startY: marginTop + 32,
                         theme: 'grid',
                         margin: { left: marginLeft, right: marginLeft },
-                        tableWidth: availableWidth,
+                        tableWidth: 'wrap',
                         columnStyles,
                         styles: {
                             fontSize: 9,
